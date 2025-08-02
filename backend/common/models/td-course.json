@@ -1,0 +1,119 @@
+{
+  "name": "TdCourse",
+  "base": "PersistedModel",
+  "idInjection": true,
+  "options": {
+    "validateUpsert": true
+  },
+  "properties": {
+    "courseName": {
+      "type": "string",
+      "required": true
+    },
+    "subTitle": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"  
+    },
+    "coverImage": {
+      "type": "string"
+    },
+    "pricing": {
+      "type": "number",
+      "default": 0
+    },
+    "language": {
+      "type": "string",
+      "default": "English"
+    },
+    "duration": {
+      "type": "string",
+      "description": "Total course length (e.g. '5h 30m')"
+    },
+    "level": {
+      "type": "string",
+      "description": "Beginner, Intermediate, Advanced"
+    },
+    "instructorName": {
+      "type": "string"
+    },
+    "instructorProfileImage": {
+      "type": "string"
+    },
+    "rating": {
+      "type": "number",
+      "default": 0
+    },
+    "totalRatings": {
+      "type": "number",
+      "default": 0
+    },
+    "enrollments": {
+      "type": "number",
+      "default": 0
+    },
+    "tags": {
+      "type": ["string"]
+    },
+    "isFeatured": {
+      "type": "boolean",
+      "default": false
+    },
+    "isPublished": {
+      "type": "boolean",
+      "default": false
+    },
+    "modules": {
+      "type": [
+        "object"
+      ],
+      "default": [],
+      "itemType": {
+        "week": "number",
+        "topic": "string",
+        "videos": [
+          {
+            "title": "string",
+            "duration": "string",
+            "videoUrl": "string",
+            "description": "string"
+          }
+        ]
+      }
+    },
+    "createdAt": {
+      "type": "date",
+      "defaultFn": "now"
+    },
+    "updatedAt": {
+      "type": "date",
+      "defaultFn": "now"
+    }
+  },
+  "relations": {
+    "courseCategories": {
+      "type": "hasMany",
+      "model": "CourseCategory",
+      "foreignKey": "courseId",
+      "options": {
+        "nestRemoting": true
+      }
+    }
+  },
+  "acls": [
+    {
+      "accessType": "*",
+      "principalType": "ROLE",
+      "principalId": "$everyone",
+      "permission": "ALLOW"
+    },
+    {
+      "accessType": "*",
+      "principalType": "ROLE",
+      "principalId": "$authenticated",
+      "permission": "ALLOW"
+    }
+  ],
+  "methods": {}
+}

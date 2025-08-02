@@ -1,0 +1,71 @@
+{
+  "name": "Notification",
+  "base": "PersistedModel",
+  "strict": "validate",
+  "options": {
+    "validateUpsert": true
+  },
+  "properties": {
+    "id": {
+      "type": "string",
+      "id": true,
+      "defaultFn": "guid"
+    },
+    "userId": {
+      "type": "string",
+      "required": true,
+      "description": "ID of the user receiving the notification"
+    },
+    "title": {
+      "type": "string",
+      "required": true,
+      "description": "Notification title"
+    },
+    "message": {
+      "type": "string",
+      "required": true,
+      "description": "Notification message body"
+    },
+    "imageUrl": {
+      "type": "string",
+      "description": "Optional image or icon for the notification"
+    },
+    "type": {
+      "type": "string",
+      "default": "alert",
+      "description": "Type of notification (alert, trade-signal, news, promo, etc.)"
+    },
+    "status": {
+      "type": "string",
+      "default": "unread",
+      "description": "Notification status (unread, read)"
+    },
+    "isRead": {
+      "type": "boolean",
+      "default": false,
+      "description": "Quick boolean for checking read status"
+    },
+    "createdAt": {
+      "type": "date",
+      "defaultFn": "now"
+    },
+    "readAt": {
+      "type": "date",
+      "description": "Timestamp when notification was read"
+    },
+    "meta": {
+      "type": "object",
+      "description": "Extra metadata (like deep-link URL, trade ID, etc.)"
+    }
+  },
+  "relations": {
+    "user": {
+      "type": "belongsTo",
+      "model": "User",
+      "foreignKey": "userId"
+    }
+  },
+  "acls": [],
+  "methods": {},
+  "mixins": {}
+}

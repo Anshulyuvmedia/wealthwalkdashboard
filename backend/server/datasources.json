@@ -1,0 +1,216 @@
+{
+  "db": {
+    "name": "db",
+    "connector": "memory"
+  },
+  "mongoDB": {
+    "localUrl": "mongodb://yuvmedia:yuvmedia%40123@65.0.131.114:27017/tradingdb?authSource=tradingdb",
+    "name": "mongoDB",
+    "useNewUrlParser": true,
+    "connector": "mongodb",
+    "url": "mongodb://127.0.0.1:27017/apitrading"
+  },
+  "smsService": {
+    "name": "smsService",
+    "headers": {
+      "accepts": "application/json",
+      "content-type": "application/json"
+    },
+    "crud": false,
+    "connector": "rest",
+    "operations": [
+      {
+        "template": {
+          "method": "GET",
+          "url": "http://sms.jaipursmshub.in/api_v2/message/send?api_key=uJXTLH2O_xV_r5utjRB0SEW8rrLBSy9APxqM_sB-KL7bR-_bL8vULpQtBdBMZWKC&sender_id=MTGPSA&dlt_template_id={dlt_template_id}",
+          "query": {
+            "mobile_no": "{mobile_no}",
+            "message": "{message}"
+          }
+        },
+        "functions": {
+          "sendSMS": [
+            "mobile_no",
+            "message",
+            "dlt_template_id"
+          ]
+        }
+      }
+    ]
+  },
+  "awsStorage": {
+    "name": "awsStorage",
+    "connector": "loopback-component-storage",
+    "provider": "amazon",
+    "key": "",
+    "keyId": ""
+  },
+  "getIntradayData": {
+    "name": "getIntradayData",
+    "headers": {
+      "accepts": "application/json",
+      "content-type": "application/json"
+    },
+    "crud": false,
+    "connector": "rest",
+    "operations": [
+      {
+        "template": {
+          "method": "GET",
+          "url": "http://nimblerest.lisuns.com:4531/GetLastQuote/?accessKey=d017b486-b42b-4be7-aad7-48aa748970eb&exchange=NFO&instrumentIdentifier={type}-I"
+        },
+        "functions": {
+          "getcurrentIntraday": [
+            "type"
+          ]
+        }
+      },
+      {
+        "template": {
+          "method": "GET",
+          "url": "http://nimblerest.lisuns.com:4531/GetProducts/?accessKey=d017b486-b42b-4be7-aad7-48aa748970eb&exchange=NFO"
+        },
+        "functions": {
+          "getProductList": []
+        }
+      },
+      {
+        "template": {
+          "method": "GET",
+          "url": "http://nimblerest.lisuns.com:4531/GetHistory/?accessKey=d017b486-b42b-4be7-aad7-48aa748970eb&exchange=NFO&instrumentIdentifier={type}&periodicity={periodicity}&max={max}&period={period}"
+        },
+        "functions": {
+          "GetHistory": [
+            "periodicity",
+            "type",
+            "max",
+            "period"
+          ]
+        }
+      },
+      {
+        "template": {
+          "method": "GET",
+          "url": "http://nimblerest.lisuns.com:4531/GetLastQuoteArray/?accessKey=d017b486-b42b-4be7-aad7-48aa748970eb&exchange=NFO&instrumentIdentifiers={product}"
+        },
+        "functions": {
+          "GetMultiOptionChain": [
+            "product"
+          ]
+        }
+      },
+      {
+        "template": {
+          "method": "GET",
+          "url": "http://nimblerest.lisuns.com:4531/GetSnapshot/?accessKey=d017b486-b42b-4be7-aad7-48aa748970eb&exchange=NFO&periodicity={time}&period=5&instrumentIdentifiers={products}"
+        },
+        "functions": {
+          "GetSnapshot": [
+            "products",
+            "time"
+          ]
+        }
+      }
+    ]
+  },
+  "getOptionExpiry": {
+    "name": "getOptionExpiry",
+    "headers": {
+      "accepts": "application/json",
+      "content-type": "application/json"
+    },
+    "crud": false,
+    "connector": "rest",
+    "operations": [
+      {
+        "template": {
+          "method": "GET",
+          "url": "http://nimblerest.lisuns.com:4531/GetExpiryDates/?accessKey=d017b486-b42b-4be7-aad7-48aa748970eb&exchange=NFO&product={type}"
+        },
+        "functions": {
+          "getOptionExpiryDates": [
+            "type"
+          ]
+        }
+      }
+    ]
+  },
+  "getOptionData": {
+    "name": "getOptionData",
+    "headers": {
+      "accepts": "application/json",
+      "content-type": "application/json"
+    },
+    "crud": false,
+    "connector": "rest",
+    "operations": [
+      {
+        "template": {
+          "method": "GET",
+          "url": "http://nimblerest.lisuns.com:4531/GetLastQuoteOptionChain/?accessKey=d017b486-b42b-4be7-aad7-48aa748970eb&exchange=NFO&product={type}&expiry={expirydate}"
+        },
+        "functions": {
+          "getOptionDataToday": [
+            "type",
+            "expirydate"
+          ]
+        }
+      }
+    ]
+  },
+  "globeldatasource": {
+    "name": "globeldatasource",
+    "headers": {
+      "accepts": "application/json",
+      "Authorization": "qB7MVAJZznyfGq-2Ye5F",
+      "content-type": "application/json"
+    },
+    "crud": false,
+    "connector": "rest",
+    "operations": [
+      {
+        "template": {
+          "method": "GET",
+          "url": "http://nimblerest.lisuns.com:4531/GetLastQuote/?accessKey=d017b486-b42b-4be7-aad7-48aa748970eb&exchange=NFO&instrumentIdentifier={type}-I"
+        },
+        "functions": {
+          "getcurrentIntraday": [
+            "type"
+          ]
+        }
+      },
+      {
+        "template": {
+          "method": "GET",
+          "url": "http://nimblerest.lisuns.com:4531/GetExpiryDates/?accessKey=d017b486-b42b-4be7-aad7-48aa748970eb&exchange=NFO&product={type}"
+        },
+        "functions": {
+          "getOptionExpiryDates": [
+            "type"
+          ]
+        }
+      },
+      {
+        "template": {
+          "method": "GET",
+          "url": "http://nimblerest.lisuns.com:4531/GetLastQuoteOptionChain/?accessKey=d017b486-b42b-4be7-aad7-48aa748970eb&exchange=NFO&product={type}&expiry={expirydate}"
+        },
+        "functions": {
+          "getOptionDataToday": [
+            "type",
+            "expirydate"
+          ]
+        }
+      },
+      {
+        "template": {
+          "method": "GET",
+          "url": "http://nimblerest.lisuns.com:4531/GetProducts/?accessKey=d017b486-b42b-4be7-aad7-48aa748970eb&exchange=NFO"
+        },
+        "functions": {
+          "getProductList": []
+        }
+      }
+    ]
+  }
+}

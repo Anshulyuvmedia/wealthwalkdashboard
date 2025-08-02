@@ -1,0 +1,86 @@
+{
+    "name": "TdCall",
+    "base": "PersistedModel",
+    "idInjection": true,
+    "options": {
+      "validateUpsert": true
+    },
+    "properties": {
+      "category": {
+        "type": "string",
+        "required": true
+      },
+      "option": {
+        "type": "string",
+        "required": true
+      },
+      "value": {
+        "type": "string",
+        "required": true
+      },
+      "time": {
+        "type": "string",
+        "required": true
+      },
+      "imageUrl": {
+        "type": "string",
+        "required": true
+      },
+      "optionType": {
+        "type": "string",
+        "required": true
+      },
+      "CallType": {
+        "type": "string",
+        "required": true
+      },
+      "strikePrice": {
+        "type": "string",
+        "required": true
+      },
+      "expiryDate": {
+        "type": "string",
+        "required": true
+      },
+      "sValue": {
+        "type": "string",
+        "required": true
+      },
+      "eValue": {
+        "type": "string",
+        "required": true
+      },
+      "createdAt": {
+        "type": "date",
+        "defaultFn": "now"
+      },
+      "updateAt": {
+        "type": "date",
+        "defaultFn": "now"
+      }
+    },
+    "validations": [],
+    "relations": {},
+    "acls": [
+      {
+        "accessType": "*",
+        "principalType": "ROLE",
+        "principalId": "$everyone",
+        "permission": "ALLOW"
+      },
+      {
+        "accessType": "READ",
+        "principalType": "ROLE",
+        "principalId": "$everyone",
+        "permission": "ALLOW"
+      },
+      {
+        "accessType": "*",
+        "principalType": "ROLE",
+        "principalId": "$authenticated",
+        "permission": "ALLOW"
+      }
+    ],
+    "methods": {}
+  }
+  
