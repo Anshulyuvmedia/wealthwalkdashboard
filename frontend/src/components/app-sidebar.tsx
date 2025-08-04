@@ -5,18 +5,16 @@ import {
   IconCamera,
   IconChartBar,
   IconDashboard,
-  IconDatabase,
   IconFileAi,
   IconFileDescription,
-  IconFileWord,
   IconFolder,
   IconHelp,
-  IconTrophy,
   IconListDetails,
-  IconReport,
+  IconDeviceLaptop,
   IconSearch,
   IconSettings,
   IconUsers,
+  IconLayoutDashboard,
 } from "@tabler/icons-react";
 
 import { NavDocuments } from "@/components/nav-documents";
@@ -28,6 +26,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { Link } from "react-router-dom";
 
 const data = {
   user: {
@@ -129,19 +128,19 @@ const data = {
   ],
   documents: [
     {
-      name: "Data Library",
-      url: "#",
-      icon: IconDatabase,
+      name: "Dashboard",
+      url: "/",
+      icon: IconLayoutDashboard,
     },
     {
-      name: "Reports",
-      url: "#",
-      icon: IconReport,
+      name: "Users",
+      url: "/users",
+      icon: IconUsers,
     },
     {
-      name: "Word Assistant",
-      url: "#",
-      icon: IconFileWord,
+      name: "Courses",
+      url: "/course",
+      icon: IconDeviceLaptop,
     },
   ],
 };
@@ -156,10 +155,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="#">
-                <IconTrophy className="!size-5" />
-                <span className="text-base font-semibold">Victory Vision</span>
-              </a>
+              <Link to="/">
+                <img
+                  src="/wealthwalklogo.png"
+                  alt="Image"
+                  className="size-8 rounded-lg"
+                />
+                <span className="text-base font-semibold">Wealth Walk</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

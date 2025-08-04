@@ -52,7 +52,7 @@
     "ipAddress": {
       "type": "string"
     },
-     "twoFaEnabled": {
+    "twoFaEnabled": {
       "type": "boolean"
     },
     "profileImage": {
