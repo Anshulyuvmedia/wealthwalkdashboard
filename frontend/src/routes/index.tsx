@@ -4,13 +4,17 @@ import Login from "../app/auth/login-page";
 import Register from "../app/auth/register-page";
 import Users from "@/app/Pages/users/userpage";
 import Dashboard from "../app/Pages/dashboard/dashboardpage";
-import Courses from "@/app/Pages/courses/coursepage";
+import Courses from "@/app/Pages/courses/page";
+import AddCourse from "@/app/Pages/courses/AddCourse";
+import CourseDetail from "@/app/Pages/courses/[id]";
 
 
 const authProtectedRoutes = [
     { path: "/", component: <Dashboard /> },
     { path: "/users", component: <Users /> },
     { path: "/course", component: <Courses /> },
+    { path: "/courses/add", component: <AddCourse /> },
+    { path: "/courses/:id", component: <CourseDetail /> },
 ]
 
 
