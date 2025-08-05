@@ -15,14 +15,7 @@
   },
   "AccessToken": {
     "dataSource": "mongoDB",
-    "public": false,
-    "relations": {
-      "user": {
-        "type": "belongsTo",
-        "model": "TdUser",
-        "foreignKey": "userId"
-      }
-    }
+    "public": false
   },
   "ACL": {
     "dataSource": "mongoDB",
@@ -45,6 +38,10 @@
   },
   "TdSystemList": {
     "dataSource": "mongoDB",
+    "public": true
+  },
+  "AWSContainer": {
+    "dataSource": "awsStorage",
     "public": true
   },
   "TdHelpDesk": {

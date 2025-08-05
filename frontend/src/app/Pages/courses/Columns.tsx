@@ -1,9 +1,8 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import type { TdCourse } from "./types";
-
+import { IconEdit } from '@tabler/icons-react';
 // Columns definition for the course data table
 export const columns: ColumnDef<TdCourse>[] = [
     {
@@ -15,7 +14,6 @@ export const columns: ColumnDef<TdCourse>[] = [
                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             >
                 Sr.No.
-                <ArrowUpDown className="ml-2 h-4 w-4" />
             </Button>
         ),
     },
@@ -24,9 +22,14 @@ export const columns: ColumnDef<TdCourse>[] = [
         header: "Cover",
         cell: ({ row }) => {
             const imageUrl = row.getValue("coverImage") as string | undefined;
-            return imageUrl ? (
+            const fullUrl = imageUrl
+                ? imageUrl.startsWith("http")
+                    ? imageUrl
+                    : `http://localhost:3000/Uploads/${imageUrl}`
+                : undefined;
+            return fullUrl ? (
                 <img
-                    src={imageUrl}
+                    src={fullUrl}
                     alt="Course Cover"
                     className="h-10 w-10 rounded object-cover"
                     onError={(e) => {
@@ -86,13 +89,18 @@ export const columns: ColumnDef<TdCourse>[] = [
         id: "actions",
         cell: ({ row }) => {
             const course = row.original;
+            // console.log("Course in actions:", course); // Add logging
+            if (!course.id) {
+                console.error("Course ID is undefined:", course);
+                return <Button variant="outline" size="sm" disabled>Edit (No ID)</Button>;
+            }
             return (
-                <Link to={`/courses/${course.id}`} className="text-indigo-600 hover:text-indigo-800">
-                    <div className="actions bg-white rounded-md text-center py-2">
-                        Edit
-                    </div>
+                <Link to={`/courses/${course.id}`} className="text-green-600 hover:text-green-800">
+                    <Button variant="outline" size="sm">
+                        <IconEdit stroke={2} /> Edit
+                    </Button>
                 </Link>
             );
         },
-    },
+    }
 ];

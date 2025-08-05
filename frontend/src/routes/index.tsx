@@ -12,7 +12,7 @@ import CourseDetail from "@/app/Pages/courses/[id]";
 const authProtectedRoutes = [
     { path: "/", component: <Dashboard /> },
     { path: "/users", component: <Users /> },
-    { path: "/course", component: <Courses /> },
+    { path: "/courses", component: <Courses /> },
     { path: "/courses/add", component: <AddCourse /> },
     { path: "/courses/:id", component: <CourseDetail /> },
 ]

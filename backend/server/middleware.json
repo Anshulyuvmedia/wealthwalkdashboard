@@ -19,9 +19,6 @@
     "helmet#hidePoweredBy": {},
     "helmet#ieNoOpen": {},
     "helmet#noSniff": {},
-    "helmet#noCache": {
-      "enabled": false
-    },
     "cors": {
       "params": {
         "origin": true,

@@ -14,10 +14,11 @@
       "type": "string"
     },
     "description": {
-      "type": "string"  
+      "type": "string"
     },
     "coverImage": {
-      "type": "string"
+      "type": "string",
+      "description": "URL or path to the course cover image (e.g., /Uploads/<timestamp>_image.png)"
     },
     "pricing": {
       "type": "number",
@@ -29,7 +30,7 @@
     },
     "duration": {
       "type": "string",
-      "description": "Total course length (e.g. '5h 30m')"
+      "description": "Total course length (e.g., '5h 30m')"
     },
     "level": {
       "type": "string",
@@ -39,22 +40,28 @@
       "type": "string"
     },
     "instructorProfileImage": {
-      "type": "string"
+      "type": "string",
+      "description": "URL or path to the instructor's profile image (e.g., /Uploads/<timestamp>_instructor.jpg)"
     },
     "rating": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "min": 0,
+      "max": 5
     },
     "totalRatings": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "min": 0
     },
     "enrollments": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "min": 0
     },
     "tags": {
-      "type": ["string"]
+      "type": ["string"],
+      "default": []
     },
     "isFeatured": {
       "type": "boolean",
@@ -65,21 +72,45 @@
       "default": false
     },
     "modules": {
-      "type": [
-        "object"
-      ],
+      "type": ["object"],
       "default": [],
       "itemType": {
-        "index": "number",
-        "topic": "string",
-        "videos": [
-          {
-            "title": "string",
-            "duration": "string",
-            "videoUrl": "string",
-            "description": "string"
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "number",
+            "required": true
+          },
+          "topic": {
+            "type": "string",
+            "required": true
+          },
+          "videos": {
+            "type": ["object"],
+            "default": [],
+            "itemType": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "required": true
+                },
+                "duration": {
+                  "type": "string",
+                  "required": true
+                },
+                "videoUrl": {
+                  "type": "string",
+                  "required": true
+                },
+                "description": {
+                  "type": "string",
+                  "required": true
+                }
+              }
+            }
           }
-        ]
+        }
       }
     },
     "createdAt": {
@@ -105,13 +136,13 @@
     {
       "accessType": "*",
       "principalType": "ROLE",
-      "principalId": "$everyone",
+      "principalId": "$authenticated",
       "permission": "ALLOW"
     },
     {
-      "accessType": "*",
+      "accessType": "READ",
       "principalType": "ROLE",
-      "principalId": "$authenticated",
+      "principalId": "$everyone",
       "permission": "ALLOW"
     }
   ],

@@ -4,11 +4,12 @@
     "connector": "memory"
   },
   "mongoDB": {
-    "url": "mongodb://127.0.0.1:27017/apitrading",
-    "localUrl": "mongodb://yuvmedia:yuvmedia%40123@65.0.131.114:27017/tradingdb?authSource=tradingdb",
     "name": "mongoDB",
+    "connector": "mongodb",
+    "url": "mongodb://127.0.0.1:27017/apitrading",
     "useNewUrlParser": true,
-    "connector": "mongodb"
+    "useUnifiedTopology": true,
+    "debug": true
   },
   "smsService": {
     "name": "smsService",
@@ -37,13 +38,6 @@
         }
       }
     ]
-  },
-  "awsStorage": {
-    "name": "awsStorage",
-    "connector": "loopback-component-storage",
-    "provider": "amazon",
-    "key": "",
-    "keyId": ""
   },
   "getIntradayData": {
     "name": "getIntradayData",

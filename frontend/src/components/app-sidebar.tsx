@@ -139,7 +139,7 @@ const data = {
     },
     {
       name: "Courses",
-      url: "/course",
+      url: "/courses",
       icon: IconDeviceLaptop,
     },
   ],

@@ -2,7 +2,6 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Toaster } from "@/components/ui/sonner";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -26,7 +25,6 @@ export default function Courses() {
 
     return (
         <SidebarProvider>
-            <Toaster />
             <AppSidebar variant="inset" />
             <SidebarInset>
                 <SiteHeader title="Courses" />
