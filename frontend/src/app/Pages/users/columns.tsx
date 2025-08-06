@@ -1,15 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
+import { IconTrashX, IconEdit } from "@tabler/icons-react";
 import type { TdUser } from "./interfaces";
 
 export const columns: ColumnDef<TdUser>[] = [
@@ -22,7 +14,6 @@ export const columns: ColumnDef<TdUser>[] = [
                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             >
                 Sr.No.
-                <ArrowUpDown className="ml-2 h-4 w-4" />
             </Button>
         ),
     },
@@ -83,59 +74,37 @@ export const columns: ColumnDef<TdUser>[] = [
     },
     {
         id: "actions",
+        header: "Action",
         cell: ({ row, table }) => {
             const user = row.original;
-            const { setEditUser, setDeleteUserId, onToggleStatus } = table.options.meta as {
+            const { setEditUser, setDeleteUserId } = table.options.meta as {
                 setEditUser: (user: TdUser | null) => void;
                 setDeleteUserId: (id: string | null) => void;
-                onToggleStatus: (id: string, status: "active" | "inactive") => void;
             };
             return (
-                <div className="actions">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigator.clipboard.writeText(user.id);
-                                    toast.success("User ID copied to clipboard");
-                                }}
-                            >
-                                Copy User ID
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditUser(user);
-                                }}
-                            >
-                                Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteUserId(user.id);
-                                }}
-                            >
-                                Delete
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onToggleStatus(user.id, user.status === "active" ? "inactive" : "active");
-                                }}
-                            >
-                                {user.status === "active" ? "Disable" : "Enable"}
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setEditUser(user);
+                        }}
+                        className="border-green-300 text-green-300 hover:bg-gray-100"
+                    >
+                        <IconEdit className="mr-1 h-4 w-4" /> Edit
+                    </Button>
+                    <Button
+                        // variant="destructive"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteUserId(user.id);
+                        }}
+                        className="bg-red-600 hover:bg-red-900 text-white"
+                    >
+                        <IconTrashX className="mr-1 h-4 w-4" /> Delete
+                    </Button>
                 </div>
             );
         },

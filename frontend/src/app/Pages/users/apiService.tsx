@@ -2,13 +2,19 @@ import axios from "axios";
 import { toast } from "sonner";
 import type { TdUser, UserFormData } from "./interfaces";
 
+const apiClient = axios.create({
+    baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api",
+    headers: {
+        "Content-Type": "application/json",
+    },
+});
+
 export const apiService = {
     async getUsers(): Promise<TdUser[]> {
         try {
             const token = JSON.parse(localStorage.getItem("adminToken") || "{}").id;
-            const response = await axios.get("http://localhost:3000/api/TdUsers", {
+            const response = await apiClient.get("/TdUsers", {
                 headers: {
-                    "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
             });
@@ -32,17 +38,16 @@ export const apiService = {
                     }
                 });
                 formDataWithFile.append("profileImage", formData.profileImageFile);
-                await axios.post("http://localhost:3000/api/TdUsers", formDataWithFile, {
+                await apiClient.post("/TdUsers", formDataWithFile, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         "Content-Type": "multipart/form-data",
                     },
                 });
             } else {
-                await axios.post("http://localhost:3000/api/TdUsers", dataToSend, {
+                await apiClient.post("/TdUsers", dataToSend, {
                     headers: {
                         Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
                     },
                 });
             }
@@ -65,17 +70,16 @@ export const apiService = {
                     }
                 });
                 formDataWithFile.append("profileImage", formData.profileImageFile);
-                await axios.patch(`http://localhost:3000/api/TdUsers/${id}`, formDataWithFile, {
+                await apiClient.patch(`/TdUsers/${id}`, formDataWithFile, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         "Content-Type": "multipart/form-data",
                     },
                 });
             } else {
-                await axios.patch(`http://localhost:3000/api/TdUsers/${id}`, dataToSend, {
+                await apiClient.patch(`/TdUsers/${id}`, dataToSend, {
                     headers: {
                         Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
                     },
                 });
             }
@@ -89,7 +93,7 @@ export const apiService = {
     async deleteUser(id: string) {
         const token = JSON.parse(localStorage.getItem("adminToken") || "{}").id;
         try {
-            await axios.delete(`http://localhost:3000/api/TdUsers/${id}`, {
+            await apiClient.delete(`/TdUsers/${id}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             toast.success("User deleted successfully!");
@@ -102,13 +106,12 @@ export const apiService = {
     async toggleUserStatus(id: string, status: "active" | "inactive") {
         const token = JSON.parse(localStorage.getItem("adminToken") || "{}").id;
         try {
-            await axios.patch(
-                `http://localhost:3000/api/TdUsers/${id}`,
+            await apiClient.patch(
+                `/TdUsers/${id}`,
                 { status },
                 {
                     headers: {
                         Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
                     },
                 }
             );

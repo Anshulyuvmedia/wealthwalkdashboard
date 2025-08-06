@@ -43,7 +43,7 @@ export const columns: ColumnDef<TdPlan>[] = [
         accessorKey: "pricing",
         header: "Price",
         cell: ({ row }) => (
-            <span className="text-gray-100 dark:text-gray-200 font-medium">${row.original.pricing.toFixed(2)}</span>
+            <span className="text-gray-100 dark:text-gray-200 font-medium">₹ {row.original.pricing.toFixed(2)}</span>
         ),
     },
     {
@@ -55,6 +55,7 @@ export const columns: ColumnDef<TdPlan>[] = [
     },
     {
         id: "actions",
+        header: "Actions",
         cell: ({ row, table }) => {
             const { openEditModal, setPlans, plans } = table.options.meta as any;
 

@@ -25,6 +25,7 @@ export default function Users() {
     const fetchData = async () => {
         const users = await apiService.getUsers();
         setData(users);
+        console.log('users', users);
     };
 
     const handleCreateOrUpdate = async (formData: UserFormData) => {
@@ -59,6 +60,9 @@ export default function Users() {
             console.error("Error toggling user status:", error);
         }
     };
+
+    // Find the user object for the delete confirmation dialog
+    const userToDelete = data.find(user => user.id === deleteUserId);
 
     return (
         <SidebarProvider
@@ -106,28 +110,15 @@ export default function Users() {
                         setEditUser={setEditUser}
                         setDeleteUserId={setDeleteUserId}
                     />
-                    <Dialog open={editUser !== null} onOpenChange={() => setEditUser(null)}>
-                        <DialogContent className="max-w-md">
-                            <DialogHeader>
-                                <DialogTitle>Edit User</DialogTitle>
-                            </DialogHeader>
-                            <UserForm
-                                user={editUser}
-                                onSubmit={handleCreateOrUpdate}
-                                onCancel={() => setEditUser(null)}
-                                isEditing={true}
-                            />
-                        </DialogContent>
-                    </Dialog>
                     <Dialog open={deleteUserId !== null} onOpenChange={() => setDeleteUserId(null)}>
                         <DialogContent className="max-w-md">
                             <DialogHeader>
                                 <DialogTitle>Confirm Deletion</DialogTitle>
                             </DialogHeader>
                             <div className="py-4">
-                                <p className="text-sm text-gray-700">
-                                    Are you sure you want to delete the user with ID{" "}
-                                    <strong>{deleteUserId}</strong>? This action cannot be undone.
+                                <p className="text-sm text-white">
+                                    Are you sure you want to delete the user{" "}
+                                    <strong>{userToDelete?.contactName || "Unknown"}</strong>? This action cannot be undone.
                                 </p>
                             </div>
                             <div className="flex justify-end gap-4">
