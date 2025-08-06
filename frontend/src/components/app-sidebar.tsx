@@ -14,6 +14,7 @@ import {
   IconSearch,
   IconSettings,
   IconUsers,
+  IconCurrencyRupee,
   IconLayoutDashboard,
 } from "@tabler/icons-react";
 
@@ -141,6 +142,11 @@ const data = {
       name: "Courses",
       url: "/courses",
       icon: IconDeviceLaptop,
+    },
+    {
+      name: "Plans",
+      url: "/plans",
+      icon: IconCurrencyRupee,
     },
   ],
 };

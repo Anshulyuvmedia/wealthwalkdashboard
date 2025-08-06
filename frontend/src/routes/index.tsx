@@ -7,6 +7,7 @@ import Dashboard from "../app/Pages/dashboard/dashboardpage";
 import Courses from "@/app/Pages/courses/page";
 import AddCourse from "@/app/Pages/courses/AddCourse";
 import CourseDetail from "@/app/Pages/courses/[id]";
+import Plans from "@/app/Pages/plans/page";
 
 
 const authProtectedRoutes = [
@@ -15,6 +16,7 @@ const authProtectedRoutes = [
     { path: "/courses", component: <Courses /> },
     { path: "/courses/add", component: <AddCourse /> },
     { path: "/courses/:id", component: <CourseDetail /> },
+    { path: "/plans", component: <Plans /> },
 ]
 
 

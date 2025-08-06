@@ -1,5 +1,4 @@
 import * as React from "react";
-import type { ColumnDef } from "@tanstack/react-table";
 import {
     flexRender,
     getCoreRowModel,
@@ -8,6 +7,7 @@ import {
     getSortedRowModel,
     getFilteredRowModel,
 } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,25 +18,28 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import type { TdCourse } from "./types";
-
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-
+import type { TdUser } from "./interfaces";
 
 interface DataTableProps {
-    columns: ColumnDef<TdCourse, any>[];
-    data: TdCourse[];
+    columns: ColumnDef<TdUser, any>[];
+    data: TdUser[];
+    refreshData: () => void;
+    onCreateOrUpdate: (formData: any) => void;
+    onDelete: (id: string) => void;
+    onToggleStatus: (id: string, status: "active" | "inactive") => void;
+    editUser: TdUser | null;
+    setEditUser: (user: TdUser | null) => void;
+    setDeleteUserId: (id: string | null) => void;
 }
 
-export function DataTable({ columns, data }: DataTableProps) {
+export function DataTable({
+    columns,
+    data,
+    onToggleStatus,
+    setEditUser,
+    setDeleteUserId,
+}: DataTableProps) {
     const [globalFilter, setGlobalFilter] = React.useState("");
-    const pageSizes = [10, 20, 30]
 
     const table = useReactTable({
         data,
@@ -48,6 +51,7 @@ export function DataTable({ columns, data }: DataTableProps) {
         onGlobalFilterChange: setGlobalFilter,
         state: { globalFilter },
         initialState: { pagination: { pageSize: 10 } },
+        meta: { setEditUser, setDeleteUserId, onToggleStatus },
     });
 
     return (
@@ -121,22 +125,18 @@ export function DataTable({ columns, data }: DataTableProps) {
                 >
                     Next
                 </Button>
-                <Select
-                    value={String(table.getState().pagination.pageSize)}
-                    onValueChange={(value) => table.setPageSize(Number(value))}
+                <select
+                    value={table.getState().pagination.pageSize}
+                    onChange={(e) => table.setPageSize(Number(e.target.value))}
+                    className="p-1 rounded-md border"
                 >
-                    <SelectTrigger className="w-[120px] bg-black text-white">
-                        <SelectValue placeholder="Page Size" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-black text-white">
-                        {pageSizes.map((size) => (
-                            <SelectItem key={size} value={String(size)} className="text-white">
-                                Show {size}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                    {[10, 20, 30].map((pageSize) => (
+                        <option key={pageSize} value={pageSize}>
+                            Show {pageSize}
+                        </option>
+                    ))}
+                </select>
             </div>
-        </div >
+        </div>
     );
 }

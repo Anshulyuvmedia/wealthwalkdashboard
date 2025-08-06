@@ -388,7 +388,13 @@ export default function CourseDetail() {
     }
 
     return (
-        <SidebarProvider>
+        <SidebarProvider
+            style={
+                {
+                    "--sidebar-width": "calc(var(--spacing) * 50)",
+                    "--header-height": "calc(var(--spacing) * 12)",
+                } as React.CSSProperties
+            }>
             <AppSidebar variant="inset" />
             <SidebarInset>
                 <SiteHeader title="Edit Course" />

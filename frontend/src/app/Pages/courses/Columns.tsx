@@ -1,6 +1,6 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";    
 import type { TdCourse } from "./types";
 import { IconEdit } from '@tabler/icons-react';
 // Columns definition for the course data table

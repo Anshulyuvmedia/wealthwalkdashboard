@@ -249,7 +249,13 @@ export default function AddCourse() {
     };
 
     return (
-        <SidebarProvider>
+        <SidebarProvider
+            style={
+                {
+                    "--sidebar-width": "calc(var(--spacing) * 50)",
+                    "--header-height": "calc(var(--spacing) * 12)",
+                } as React.CSSProperties
+            }>
             <AppSidebar variant="inset" />
             <SidebarInset>
                 <SiteHeader title="Add Course" />
@@ -257,7 +263,7 @@ export default function AddCourse() {
                     <form onSubmit={handleSubmit} className="space-y-8">
                         <div className="flex justify-between gap-4">
                             <div>
-                                <h1 className="text-3xl font-bold text-gray-800">Add New Course</h1>
+                                <h1 className="text-3xl font-bold">Add New Course</h1>
                             </div>
                             <div className="flex justify-end gap-4">
                                 <Button

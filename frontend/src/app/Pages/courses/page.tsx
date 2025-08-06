@@ -24,13 +24,18 @@ export default function Courses() {
     };
 
     return (
-        <SidebarProvider>
+        <SidebarProvider style={
+            {
+                "--sidebar-width": "calc(var(--spacing) * 50)",
+                "--header-height": "calc(var(--spacing) * 12)",
+            } as React.CSSProperties
+        }>
             <AppSidebar variant="inset" />
             <SidebarInset>
                 <SiteHeader title="Courses" />
                 <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                     <div className="flex items-center justify-between">
-                        <h1 className="text-2xl font-semibold">Courses Management</h1>
+                        <h1 className="text-3xl font-bold">Course Management</h1>
                         <Button
                             size="sm"
                             className="flex items-center gap-2"

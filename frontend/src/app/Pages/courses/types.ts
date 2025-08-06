@@ -61,11 +61,18 @@ export interface CourseFormData {
     }[];
     coverImageFile?: File;
     instructorProfileImageFile?: File;
-    coverImage?: string; // Add existing image URL
-    instructorProfileImage?: string; // Add existing image URL
+    coverImage?: string;
+    instructorProfileImage?: string;
 }
 
-// API service
+// Create Axios instance with base URL from .env (Vite)
+const apiClient = axios.create({
+    baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api",
+    headers: {
+        "Content-Type": "application/json",
+    },
+});
+
 export const apiService = {
     async getCourses(): Promise<TdCourse[]> {
         try {
@@ -78,19 +85,16 @@ export const apiService = {
 
             // Parse token if it’s stored as JSON, otherwise use it directly
             const authToken = token.startsWith("{") ? JSON.parse(token).id : token;
-            // console.log("Using token:", authToken); // Log token for debugging
 
-            const response = await axios.get("http://localhost:3000/api/TdCourses", {
+            const response = await apiClient.get("/TdCourses", {
                 headers: {
                     Authorization: `Bearer ${authToken}`,
-                    // Remove Content-Type for GET requests
                 },
             });
             const courses = response.data.map((course: any) => ({
                 ...course,
                 id: course.id,
             }));
-            // console.log("Mapped courses:", JSON.stringify(courses, null, 2));
             return courses;
         } catch (error: any) {
             console.error("Failed to fetch courses:", error.response?.status, error.response?.data);
@@ -102,9 +106,8 @@ export const apiService = {
     async getCourse(id: string): Promise<TdCourse> {
         try {
             const token = JSON.parse(localStorage.getItem("adminToken") || "{}").id;
-            const response = await axios.get(`http://localhost:3000/api/TdCourses/${id}`, {
+            const response = await apiClient.get(`/TdCourses/${id}`, {
                 headers: {
-                    "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
             });
@@ -165,7 +168,7 @@ export const apiService = {
                 formDataWithFiles.append("instructorProfileImage", formData.instructorProfileImageFile);
             }
 
-            const response = await axios.post("http://localhost:3000/api/TdCourses/createWithFiles", formDataWithFiles, {
+            const response = await apiClient.post("/TdCourses/createWithFiles", formDataWithFiles, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "multipart/form-data",
@@ -211,7 +214,6 @@ export const apiService = {
                     topic: module.topic,
                     videos: module.videos,
                 })),
-                // Only send coverImage if no new file is uploaded
                 coverImage: formData.coverImageFile ? undefined : formData.coverImage,
                 instructorProfileImage: formData.instructorProfileImageFile ? undefined : formData.instructorProfileImage,
             };
@@ -236,12 +238,7 @@ export const apiService = {
                 console.log('Appending instructorProfileImage file:', formData.instructorProfileImageFile.name);
             }
 
-            console.log('FormData entries:');
-            for (const [key, value] of formDataWithFiles.entries()) {
-                console.log(`${key}:`, value);
-            }
-
-            const response = await axios.patch(`http://localhost:3000/api/TdCourses/updateWithFiles/${id}`, formDataWithFiles, {
+            const response = await apiClient.patch(`/TdCourses/updateWithFiles/${id}`, formDataWithFiles, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data',
@@ -263,7 +260,7 @@ export const apiService = {
     async deleteCourse(id: string) {
         const token = JSON.parse(localStorage.getItem("adminToken") || "{}").id;
         try {
-            await axios.delete(`http://localhost:3000/api/TdCourses/${id}`, {
+            await apiClient.delete(`/TdCourses/${id}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             toast.success("Course deleted successfully!");
