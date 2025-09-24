@@ -6,37 +6,37 @@ const cron = require("node-cron");
 module.exports = function (TdProduct) {
   var OneTimeOnly = "0 8 * * 1-5";
   var getIntradayData = app.datasources.getIntradayData;
-  cron.schedule(OneTimeOnly, async () => {
-    getIntradayData.getProductList(async (err, response) => {
-      if (!_.isEmpty(response)) {
-        if (!_.isEmpty(response)) {
-          await new Promise((resolve, reject) => {
-            TdProduct.destroyAll({}, (err, info) => {
-              if (err) {
-                console.log(null, "Error deleting old records: " + err.message);
-              } else {
-                TdProduct.create(
-                  { List: response.PRODUCTS.slice(18) },
-                  (err, data) => {
-                    if (err) {
-                      console.error(err);
-                      reject(err);
-                    } else {
-                      console.log(null, {
-                        result: "Data updated successfully.and old data deleted",
-                      });
-                      resolve();
-                    }
-                  }
-                );
-              }
-            });
+  // cron.schedule(OneTimeOnly, async () => {
+  //   getIntradayData.getProductList(async (err, response) => {
+  //     if (!_.isEmpty(response)) {
+  //       if (!_.isEmpty(response)) {
+  //         await new Promise((resolve, reject) => {
+  //           TdProduct.destroyAll({}, (err, info) => {
+  //             if (err) {
+  //               console.log(null, "Error deleting old records: " + err.message);
+  //             } else {
+  //               TdProduct.create(
+  //                 { List: response.PRODUCTS.slice(18) },
+  //                 (err, data) => {
+  //                   if (err) {
+  //                     console.error(err);
+  //                     reject(err);
+  //                   } else {
+  //                     console.log(null, {
+  //                       result: "Data updated successfully.and old data deleted",
+  //                     });
+  //                     resolve();
+  //                   }
+  //                 }
+  //               );
+  //             }
+  //           });
 
-          });
-        }
-      }
-    });
-  });
+  //         });
+  //       }
+  //     }
+  //   });
+  // });
   TdProduct.AddProductList = (callback) => {
     getIntradayData.getProductList(async (err, response) => {
       if (!_.isEmpty(response)) {

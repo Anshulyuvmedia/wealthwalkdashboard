@@ -6,77 +6,55 @@
     "validateUpsert": true
   },
   "properties": {
-    "lastLogin": {
-      "type": "date",
-      "required": false
-    },
-    "phoneVerified": {
-      "type": "boolean",
-      "default": false
-    },
-    "isTermsAgreed": {
-      "type": "boolean",
-      "default": false
-    },
-    "contactName": {
-      "type": "string",
-      "required": true
-    },
-    "userType": {
-      "type": "string",
-      "required": true
-    },
-    "city": {
-      "type": "string"
-    },
-    "state": {
-      "type": "string"
-    },
-    "country": {
-      "type": "string",
-      "default": "IN"
-    },
-    "referrald": {
-      "type": "string"
-    },
-    "otp": {
-      "type": "string"
-    },
-    "codeCreatedAt": {
-      "type": "date"
-    },
-    "planId": {
-      "type": "string",
-      "default": "I"
-    },
-    "ipAddress": {
-      "type": "string"
-    },
-    "twoFaEnabled": {
-      "type": "boolean"
-    },
-    "profileImage": {
-      "type": "string"
-    },
-    "expairyDate": {
-      "type": "date"
-    },
-    "endDate": {
-      "type": "date"
-    },
-    "status": {
-      "type": "string",
-      "default": "inactive"
+    "lastLogin": { "type": "date" },
+    "phoneVerified": { "type": "boolean", "default": false },
+    "isTermsAgreed": { "type": "boolean", "default": false },
+    "contactName": { "type": "string", "required": true },
+    "userType": { "type": "string", "required": true },
+    "city": { "type": "string" },
+    "state": { "type": "string" },
+    "country": { "type": "string", "default": "IN" },
+    "referrald": { "type": "string" },
+    "otp": { "type": "string" },
+    "otpExpiry": { "type": "date" },
+    "codeCreatedAt": { "type": "date" },
+    "planId": { "type": "string", "default": "I" },
+    "ipAddress": { "type": "string" },
+    "twoFaEnabled": { "type": "boolean" },
+    "profileImage": { "type": "string" },
+    "expairyDate": { "type": "date" },
+    "endDate": { "type": "date" },
+    "status": { "type": "string", "default": "inactive" },
+    "isTemporary": { "type": "boolean", "default": false }
+  },
+  "relations": {
+    "accessTokens": {
+      "type": "hasMany",
+      "model": "AccessToken",
+      "foreignKey": "userId"
     }
   },
-  "validations": [],
-  "relations": {},
   "acls": [
     {
-      "accessType": "WRITE",
+      "accessType": "EXECUTE",
       "principalType": "ROLE",
       "principalId": "$everyone",
-      "permission": "ALLOW"
+      "permission": "ALLOW",
+      "property": ["generateOtp", "sendOTP", "verifyOTP", "loginGenerateOtp", "loginVerifyOtp", "validateToken"]
+    },
+    {
+      "accessType": "EXECUTE",
+      "principalType": "ROLE",
+      "principalId": "$authenticated",
+      "permission": "ALLOW",
+      "property": [
+          "resetUserPassFromPanel",
+          "changeUserStatus",
+          "resetUserPassword",
+          "generateAccessToken",
+          "testSMS",
+          "logout"
+      ]
     },
     {
       "accessType": "READ",
@@ -88,232 +66,119 @@
       "accessType": "*",
       "principalType": "ROLE",
       "principalId": "$everyone",
+      "permission": "DENY"
+    },
+    {
+      "accessType": "WRITE",
+      "principalType": "ROLE",
+      "principalId": "$authenticated",
       "permission": "ALLOW"
+    },
+    {
+      "accessType": "READ",
+      "principalType": "ROLE",
+      "principalId": "$authenticated",
+      "permission": "ALLOW"
+    },
+    {
+      "accessType": "EXECUTE",
+      "principalType": "ROLE",
+      "principalId": "$authenticated",
+      "permission": "ALLOW",
+      "property": [
+        "resetUserPassFromPanel",
+        "changeUserStatus",
+        "resetUserPassword",
+        "generateAccessToken",
+        "testSMS"
+      ]
     }
   ],
   "methods": {
+    "generateOtp": {
+      "accepts": [
+        { "arg": "data", "type": "object", "required": true, "http": { "source": "body" } }
+      ],
+      "returns": [{ "arg": "result", "type": "object" }],
+      "description": "Generate OTP for a new user registration",
+      "http": [{ "path": "/generateOtp", "verb": "post" }]
+    },
     "sendOTP": {
       "accepts": [
-        {
-          "arg": "handle",
-          "type": "string",
-          "required": true,
-          "http": {
-            "source": "query"
-          }
-        },
-        {
-          "arg": "mode",
-          "type": "string",
-          "description": "Use phone or email",
-          "http": {
-            "source": "query"
-          }
-        }
+        { "arg": "data", "type": "object", "required": true, "http": { "source": "body" } }
       ],
-      "returns": [
-        {
-          "arg": "response",
-          "type": "string"
-        }
-      ]
-    },
-    "resetUserPassword": {
-      "accepts": [
-        {
-          "arg": "handle",
-          "type": "string",
-          "required": true,
-          "http": {
-            "source": "query"
-          }
-        },
-        {
-          "arg": "otp",
-          "type": "string",
-          "required": true,
-          "http": {
-            "source": "query"
-          }
-        },
-        {
-          "arg": "newPassword",
-          "required": true,
-          "type": "string",
-          "http": {
-            "source": "query"
-          }
-        }
-      ],
-      "returns": [
-        {
-          "arg": "response",
-          "type": "string"
-        }
-      ],
-      "description": "resetUserPassword otp and password provided",
-      "http": [
-        {
-          "path": "/resetUserPassword",
-          "verb": "post"
-        }
-      ]
-    },
-    "resetUserPassFromPanel": {
-      "accepts": [
-        {
-          "arg": "userId",
-          "type": "string",
-          "required": true,
-          "http": {
-            "source": "query"
-          }
-        },
-        {
-          "arg": "debug",
-          "type": "boolean",
-          "http": {
-            "source": "query"
-          }
-        }
-      ],
-      "returns": [
-        {
-          "arg": "response",
-          "type": "string"
-        }
-      ],
-      "description": "resetUserPassFromPanel otp and password provided",
-      "http": [
-        {
-          "path": "/resetUserPassFromPanel",
-          "verb": "post"
-        }
-      ]
-    },
-    "changeUserStatus": {
-      "accepts": [
-        {
-          "arg": "userId",
-          "type": "string",
-          "required": true,
-          "http": {
-            "source": "query"
-          }
-        },
-        {
-          "arg": "newStatus",
-          "type": "string",
-          "required": true,
-          "http": {
-            "source": "query"
-          }
-        }
-      ],
-      "returns": [
-        {
-          "arg": "response",
-          "type": "string"
-        }
-      ],
-      "description": "changeUserStatus if userId and new status provided",
-      "http": [
-        {
-          "path": "/changeUserStatus",
-          "verb": "post"
-        }
-      ]
+      "returns": [{ "arg": "result", "type": "object" }],
+      "description": "Send OTP to a phone number for login (verify implementation)",
+      "http": [{ "path": "/sendOTP", "verb": "post" }]
     },
     "verifyOTP": {
       "accepts": [
-        {
-          "arg": "phone",
-          "type": "string",
-          "required": true,
-          "http": {
-            "source": "query"
-          }
-        },
-        {
-          "arg": "otp",
-          "type": "string",
-          "required": true,
-          "http": {
-            "source": "query"
-          }
-        }
+        { "arg": "data", "type": "object", "required": true, "http": { "source": "body" } }
       ],
-      "returns": [
-        {
-          "arg": "response",
-          "type": "string"
-        }
+      "returns": [{ "arg": "user", "type": "object" }],
+      "description": "Verify OTP and complete user registration",
+      "http": [{ "path": "/verifyOTP", "verb": "post" }]
+    },
+    "loginGenerateOtp": {
+      "accepts": [
+        { "arg": "data", "type": "object", "required": true, "http": { "source": "body" } }
       ],
-      "description": "verify otp while registration",
-      "http": [
-        {
-          "path": "/verifyOTP",
-          "verb": "post"
-        }
-      ]
+      "returns": [{ "arg": "result", "type": "object" }],
+      "description": "Generate OTP for login of existing verified user",
+      "http": [{ "path": "/loginGenerateOtp", "verb": "post" }]
+    },
+    "loginVerifyOtp": {
+      "accepts": [
+        { "arg": "data", "type": "object", "required": true, "http": { "source": "body" } }
+      ],
+      "returns": [{ "arg": "result", "type": "object" }],
+      "description": "Verify OTP for login and return user data with access token",
+      "http": [{ "path": "/loginVerifyOtp", "verb": "post" }]
     },
     "testSMS": {
       "accepts": [
-        {
-          "arg": "phone",
-          "type": "string",
-          "required": true,
-          "http": {
-            "source": "query"
-          }
-        },
-        {
-          "arg": "message",
-          "type": "string",
-          "required": true,
-          "http": {
-            "source": "query"
-          }
-        }
+        { "arg": "phone", "type": "string", "required": true, "http": { "source": "body" } },
+        { "arg": "message", "type": "string", "required": true, "http": { "source": "body" } }
       ],
-      "returns": [
-        {
-          "arg": "response",
-          "type": "string"
-        }
+      "returns": [{ "arg": "success", "type": "boolean" }],
+      "description": "Test SMS sending functionality",
+      "http": [{ "path": "/testSMS", "verb": "post" }]
+    },
+    "resetUserPassFromPanel": {
+      "accepts": [
+        { "arg": "userId", "type": "string", "required": true, "http": { "source": "body" } },
+        { "arg": "debug", "type": "boolean", "http": { "source": "body" } }
       ],
-      "description": "test sms",
-      "http": [
-        {
-          "path": "/testSMS",
-          "verb": "post"
-        }
-      ]
+      "returns": [{ "arg": "message", "type": "string" }],
+      "description": "Reset user password from admin panel",
+      "http": [{ "path": "/resetUserPassFromPanel", "verb": "post" }]
+    },
+    "changeUserStatus": {
+      "accepts": [
+        { "arg": "userId", "type": "string", "required": true, "http": { "source": "body" } },
+        { "arg": "newStatus", "type": "string", "required": true, "http": { "source": "body" } }
+      ],
+      "returns": [{ "arg": "message", "type": "string" }],
+      "description": "Change user status",
+      "http": [{ "path": "/changeUserStatus", "verb": "post" }]
+    },
+    "resetUserPassword": {
+      "accepts": [
+        { "arg": "handle", "type": "string", "required": true, "http": { "source": "body" } },
+        { "arg": "otp", "type": "string", "required": true, "http": { "source": "body" } },
+        { "arg": "newPassword", "type": "string", "required": true, "http": { "source": "body" } }
+      ],
+      "returns": [{ "arg": "message", "type": "string" }],
+      "description": "Reset user password with OTP",
+      "http": [{ "path": "/resetUserPassword", "verb": "post" }]
     },
     "generateAccessToken": {
       "accepts": [
-        {
-          "arg": "username",
-          "required": true,
-          "type": "string",
-          "http": {
-            "source": "query"
-          }
-        }
+        { "arg": "username", "type": "string", "required": true, "http": { "source": "body" } }
       ],
-      "returns": [
-        {
-          "arg": "response",
-          "type": "string"
-        }
-      ],
-      "description": "add account username",
-      "http": [
-        {
-          "path": "/generateAccessToken",
-          "verb": "post"
-        }
-      ]
+      "returns": [{ "arg": "token", "type": "object" }],
+      "description": "Generate access token for a user",
+      "http": [{ "path": "/generateAccessToken", "verb": "post" }]
     }
   }
 }

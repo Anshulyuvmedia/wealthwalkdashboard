@@ -13,49 +13,40 @@
     },
     "userId": {
       "type": "string",
-      "required": true,
-      "description": "ID of the user receiving the notification"
+      "required": true
     },
     "title": {
       "type": "string",
-      "required": true,
-      "description": "Notification title"
+      "required": true
     },
     "message": {
       "type": "string",
-      "required": true,
-      "description": "Notification message body"
+      "required": true
     },
     "imageUrl": {
-      "type": "string",
-      "description": "Optional image or icon for the notification"
+      "type": "string"
     },
     "type": {
       "type": "string",
-      "default": "alert",
-      "description": "Type of notification (alert, trade-signal, news, promo, etc.)"
+      "default": "alert"
     },
     "status": {
       "type": "string",
-      "default": "unread",
-      "description": "Notification status (unread, read)"
+      "default": "unread"
     },
     "isRead": {
       "type": "boolean",
-      "default": false,
-      "description": "Quick boolean for checking read status"
+      "default": false
     },
     "createdAt": {
       "type": "date",
       "defaultFn": "now"
     },
     "readAt": {
-      "type": "date",
-      "description": "Timestamp when notification was read"
+      "type": "date"
     },
     "meta": {
-      "type": "object",
-      "description": "Extra metadata (like deep-link URL, trade ID, etc.)"
+      "type": "object"
     }
   },
   "relations": {
@@ -65,7 +56,14 @@
       "foreignKey": "userId"
     }
   },
-  "acls": [],
+  "acls": [
+    {
+      "accessType": "*",
+      "principalType": "ROLE",
+      "principalId": "$everyone",
+      "permission": "ALLOW"
+    }
+  ],
   "methods": {},
   "mixins": {}
 }
