@@ -1,32 +1,10 @@
 "use client";
 
 import * as React from "react";
-import {
-  IconCamera,
-  IconChartBar,
-  IconDashboard,
-  IconFileAi,
-  IconFileDescription,
-  IconFolder,
-  IconHelp,
-  IconListDetails,
-  IconDeviceLaptop,
-  IconSearch,
-  IconSettings,
-  IconUsers,
-  IconCurrencyRupee,
-  IconLayoutDashboard,
-} from "@tabler/icons-react";
+import {IconCamera,IconChartBar,IconDashboard,IconFileAi,IconFileDescription,IconFolder,IconHelp,IconListDetails,IconDeviceLaptop,IconSearch,IconSettings,IconUsers,IconCurrencyRupee,IconLayoutDashboard,} from "@tabler/icons-react";
 
 import { NavDocuments } from "@/components/nav-documents";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
+import {Sidebar,  SidebarContent,  SidebarHeader,  SidebarMenu,  SidebarMenuButton,  SidebarMenuItem,} from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
 
 const data = {
@@ -146,6 +124,11 @@ const data = {
     {
       name: "Plans",
       url: "/plans",
+      icon: IconCurrencyRupee,
+    },
+    {
+      name: "Signals",
+      url: "/signals",
       icon: IconCurrencyRupee,
     },
   ],

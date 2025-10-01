@@ -118,5 +118,9 @@
   "OrderMangement": {
     "dataSource": "mongoDB",
     "public": true
+  },
+  "MarketIndex": {
+    "dataSource": "mongoDB",
+    "public": true
   }
 }

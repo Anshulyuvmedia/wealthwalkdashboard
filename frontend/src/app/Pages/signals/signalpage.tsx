@@ -10,19 +10,18 @@ import { columns } from "./Columns";
 import { apiService } from "./types";
 import type { TdCourse } from "./types";
 
-export default function Courses() {
+function Signals() {
     const navigate = useNavigate();
-    const [data, setData] = React.useState<TdCourse[]>([]);
-
-    React.useEffect(() => {
-        fetchData();
-    }, []);
-
-    const fetchData = async () => {
-        const courses = await apiService.getCourses();
-        setData(courses);
-    };
-
+        const [data, setData] = React.useState<TdCourse[]>([]);
+    
+        React.useEffect(() => {
+            fetchData();
+        }, []);
+    
+        const fetchData = async () => {
+            const courses = await apiService.getCourses();
+            setData(courses);
+        };
     return (
         <SidebarProvider style={
             {
@@ -35,19 +34,21 @@ export default function Courses() {
                 <SiteHeader title="Courses" />
                 <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                     <div className="flex items-center justify-between">
-                        <h1 className="text-3xl font-bold">Signals</h1>
+                        <h1 className="text-3xl font-bold">Course Management</h1>
                         <Button
                             size="sm"
                             className="flex items-center gap-2"
                             onClick={() => navigate("/courses/add")}
                         >
                             <PlusCircle className="h-4 w-4" />
-                            Add New Signal
+                            Add Course
                         </Button>
                     </div>
                     <DataTable columns={columns} data={data} />
                 </div>
             </SidebarInset>
         </SidebarProvider>
-    );
+    )
 }
+
+export default Signals
