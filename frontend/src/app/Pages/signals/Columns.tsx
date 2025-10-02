@@ -1,106 +1,122 @@
+// Updated Columns.tsx
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";    
-import type { TdCourse } from "./types";
-import { IconEdit } from '@tabler/icons-react';
-// Columns definition for the course data table
-export const columns: ColumnDef<TdCourse>[] = [
-    {
-        accessorKey: "id",
-        cell: ({ row }) => row.index + 1,
-        header: ({ column }) => (
-            <Button
-                variant="ghost"
-                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            >
-                Sr.No.
-            </Button>
-        ),
-    },
-    {
-        accessorKey: "coverImage",
-        header: "Cover",
-        cell: ({ row }) => {
-            const imageUrl = row.getValue("coverImage") as string | undefined;
-            const fullUrl = imageUrl
-                ? imageUrl.startsWith("http")
-                    ? imageUrl
-                    : `http://localhost:3000/Uploads/${imageUrl}`
-                : undefined;
-            return fullUrl ? (
-                <img
-                    src={fullUrl}
-                    alt="Course Cover"
-                    className="h-10 w-10 rounded object-cover"
-                    onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/placeholder-image.jpg";
-                    }}
-                />
-            ) : (
-                "N/A"
-            );
+import type { TdSignal } from "./types";
+import { IconEdit, IconTrash } from '@tabler/icons-react';
+
+export const getColumns = (signalType: string, onDelete: (id: number) => void): ColumnDef<TdSignal>[] => {
+    const basePath = signalType === 'paid' ? '/paidsignals' : '/freesignals';
+    const editBase = `${basePath}/edit`;
+
+    return [
+        {
+            accessorKey: "id",
+            cell: ({ row }) => row.index + 1,
+            header: ({ column }) => (
+                <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                >
+                    Sr.No.
+                </Button>
+            ),
         },
-    },
-    {
-        accessorKey: "courseName",
-        header: "Name",
-        cell: ({ getValue }) => getValue() || "N/A",
-    },
-    {
-        accessorKey: "instructorName",
-        header: "Instructor",
-        cell: ({ getValue }) => getValue() || "N/A",
-    },
-    {
-        accessorKey: "pricing",
-        header: "Price",
-        cell: ({ getValue }) => {
-            const price = getValue() as number;
-            return price === 0 ? "Free" : `$${price.toFixed(2)}`;
+        {
+            accessorKey: "category",
+            header: "Category",
+            cell: ({ getValue }) => getValue() || "N/A",
         },
-    },
-    {
-        accessorKey: "level",
-        header: "Level",
-        cell: ({ getValue }) => getValue() || "N/A",
-    },
-    {
-        accessorKey: "language",
-        header: "Language",
-        cell: ({ getValue }) => getValue() || "N/A",
-    },
-    {
-        accessorKey: "isPublished",
-        header: "Published",
-        cell: ({ row }) => {
-            const course = row.original;
-            return <span>{course.isPublished ? "Published" : "Unpublished"}</span>;
+        {
+            accessorKey: "stockName",
+            header: "Stock Name",
+            cell: ({ getValue }) => getValue() || "N/A",
         },
-    },
-    {
-        accessorKey: "rating",
-        header: "Rating",
-        cell: ({ getValue }) => {
-            const rating = getValue() as number;
-            return rating === 0 ? "N/A" : rating.toFixed(1);
+        {
+            accessorKey: "marketSentiments",
+            header: "Sentiment",
+            cell: ({ getValue }) => {
+                const sentiment = getValue() as string;
+                const colorClass = sentiment === 'Bullish' ? 'text-green-600' : 
+                                   sentiment === 'Bearish' ? 'text-red-600' : 'text-gray-600';
+                return <span className={colorClass}>{sentiment || "N/A"}</span>;
+            },
         },
-    },
-    {
-        id: "actions",
-        cell: ({ row }) => {
-            const course = row.original;
-            // console.log("Course in actions:", course); // Add logging
-            if (!course.id) {
-                console.error("Course ID is undefined:", course);
-                return <Button variant="outline" size="sm" disabled>Edit (No ID)</Button>;
-            }
-            return (
-                <Link to={`/courses/${course.id}`} className="text-green-600 hover:text-green-800">
-                    <Button variant="outline" size="sm">
-                        <IconEdit stroke={2} /> Edit
-                    </Button>
-                </Link>
-            );
+        {
+            accessorKey: "entry",
+            header: "Entry",
+            cell: ({ getValue }) => {
+                const value = getValue() as number;
+                return value ? `₹${value.toLocaleString()}` : "N/A";
+            },
         },
-    }
-];
+        {
+            accessorKey: "target",
+            header: "Target",
+            cell: ({ getValue }) => {
+                const value = getValue() as number;
+                return value ? `₹${value.toLocaleString()}` : "N/A";
+            },
+        },
+        {
+            accessorKey: "stopLoss",
+            header: "Stop Loss",
+            cell: ({ getValue }) => {
+                const value = getValue() as number;
+                return value ? `₹${value.toLocaleString()}` : "N/A";
+            },
+        },
+        {
+            accessorKey: "exit",
+            header: "Exit",
+            cell: ({ getValue }) => {
+                const value = getValue() as number;
+                return value ? `₹${value.toLocaleString()}` : "N/A";
+            },
+        },
+        {
+            accessorKey: "tradeType",
+            header: "Trade Type",
+            cell: ({ getValue }) => getValue() || "N/A",
+        },
+        {
+            accessorKey: "Strategy",
+            header: "Strategy",
+            cell: ({ getValue }) => getValue() || "N/A",
+        },
+        {
+            accessorKey: "updatedAt",
+            header: "Updated At",
+            cell: ({ getValue }) => {
+                const date = new Date(getValue() as string);
+                return date.toLocaleString() || "N/A";
+            },
+        },
+        {
+            id: "actions",
+            cell: ({ row }) => {
+                const signal = row.original;
+                if (!signal.id) {
+                    console.error("Signal ID is undefined:", signal);
+                    return <Button variant="outline" size="sm" disabled>Edit (No ID)</Button>;
+                }
+                return (
+                    <div className="flex gap-2">
+                        <Link to={`${editBase}/${signal.id}`} className="text-green-600 hover:text-green-800">
+                            <Button variant="outline" size="sm">
+                                <IconEdit stroke={2} /> Edit
+                            </Button>
+                        </Link>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => onDelete(signal.id!)}
+                        >
+                            <IconTrash stroke={2} /> Delete
+                        </Button>
+                    </div>
+                );
+            },
+        }
+    ];
+};

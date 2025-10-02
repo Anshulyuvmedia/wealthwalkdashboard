@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import {IconCamera,IconChartBar,IconDashboard,IconFileAi,IconFileDescription,IconFolder,IconHelp,IconListDetails,IconDeviceLaptop,IconSearch,IconSettings,IconUsers,IconCurrencyRupee,IconLayoutDashboard,} from "@tabler/icons-react";
+import { IconDeviceLaptop, IconUsers, IconCurrencyRupee, IconLayoutDashboard, IconBroadcast } from "@tabler/icons-react";
 
-import { NavDocuments } from "@/components/nav-documents";
-import {Sidebar,  SidebarContent,  SidebarHeader,  SidebarMenu,  SidebarMenuButton,  SidebarMenuItem,} from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
+import { NavSubmenu } from "@/components/nav-submenu"; // Import the new component
 
 const data = {
   user: {
@@ -13,123 +13,42 @@ const data = {
     email: "m@example.com",
     avatar: "/avatars/shadcn.jpg",
   },
+
   navMain: [
     {
       title: "Dashboard",
-      url: "#",
-      icon: IconDashboard,
-    },
-    {
-      title: "Lifecycle",
-      url: "#",
-      icon: IconListDetails,
-    },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: IconChartBar,
-    },
-    {
-      title: "Projects",
-      url: "#",
-      icon: IconFolder,
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: IconUsers,
-    },
-  ],
-  navClouds: [
-    {
-      title: "Capture",
-      icon: IconCamera,
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      icon: IconFileDescription,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: IconFileAi,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: IconHelp,
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: IconSearch,
-    },
-  ],
-  documents: [
-    {
-      name: "Dashboard",
       url: "/",
       icon: IconLayoutDashboard,
     },
     {
-      name: "Users",
+      title: "Users",
       url: "/users",
       icon: IconUsers,
     },
     {
-      name: "Courses",
+      title: "Courses",
       url: "/courses",
       icon: IconDeviceLaptop,
     },
     {
-      name: "Plans",
+      title: "Plans",
       url: "/plans",
       icon: IconCurrencyRupee,
     },
     {
-      name: "Signals",
-      url: "/signals",
-      icon: IconCurrencyRupee,
+      title: "Signals",
+      url: "#",
+      icon: IconBroadcast,
+      items: [
+        {
+          title: "Paid Signals",
+          url: "/paidsignals",
+        },
+        {
+          title: "Free Signals", // Fixed title to match URL (was "Archived")
+          url: "/freesignals",
+        },
+      ],
     },
   ],
 };
@@ -140,10 +59,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-            >
+            <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
               <Link to="/">
                 <img
                   src="/wealthwalklogo.png"
@@ -157,7 +73,37 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavDocuments items={data.documents} />
+        <SidebarMenu>
+          {/* Render navMain items: flat if no items, submenu if items exist */}
+          {data.navMain.map((item, index) => {
+            const Icon = item.icon;
+
+            if (item.items && item.items.length > 0) {
+              // Render as submenu
+              return (
+                <NavSubmenu
+                  key={index}
+                  title={item.title}
+                  icon={Icon}
+                  items={item.items}
+                  isActive={false} // Default to closed; set true if needed for specific items
+                />
+              );
+            } else {
+              // Render as flat item
+              return (
+                <SidebarMenuItem key={index}>
+                  <SidebarMenuButton asChild>
+                    <Link to={item.url}>
+                      {Icon && <Icon className="h-4 w-4" />}
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            }
+          })}
+        </SidebarMenu>
       </SidebarContent>
     </Sidebar>
   );

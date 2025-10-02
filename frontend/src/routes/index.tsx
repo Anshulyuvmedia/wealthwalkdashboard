@@ -9,6 +9,8 @@ import AddCourse from "@/app/Pages/courses/AddCourse";
 import CourseDetail from "@/app/Pages/courses/[id]";
 import Plans from "@/app/Pages/plans/page";
 import Signals from "@/app/Pages/signals/signalpage";
+import AddSignal from "@/app/Pages/signals/addSignal";
+import EditSignal from "@/app/Pages/signals/[id]";
 
 
 const authProtectedRoutes = [
@@ -20,7 +22,13 @@ const authProtectedRoutes = [
     { path: "/courses/:id", component: <CourseDetail /> },
 
     { path: "/plans", component: <Plans /> },
-    { path: "/signals", component: <Signals /> },
+
+    { path: "/paidsignals", component: <Signals signalType={'Paid'} /> },
+    { path: "/freesignals", component: <Signals signalType={'Free'} /> },
+    { path: "/paidsignals/add", component: <AddSignal /> },
+    { path: "/freesignals/add", component: <AddSignal /> },
+    { path: "/paidsignals/edit/:id", component: <EditSignal /> },
+    { path: "/freesignals/edit/:id", component: <EditSignal /> },
 ]
 
 

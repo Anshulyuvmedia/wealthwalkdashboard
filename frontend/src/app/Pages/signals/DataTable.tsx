@@ -1,3 +1,4 @@
+// DataTable.tsx remains unchanged
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -18,7 +19,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import type { TdCourse } from "./types";
+import type { TdSignal } from "./types";
 
 import {
     Select,
@@ -30,8 +31,8 @@ import {
 
 
 interface DataTableProps {
-    columns: ColumnDef<TdCourse, any>[];
-    data: TdCourse[];
+    columns: ColumnDef<TdSignal, any>[];
+    data: TdSignal[];
 }
 
 export function DataTable({ columns, data }: DataTableProps) {
