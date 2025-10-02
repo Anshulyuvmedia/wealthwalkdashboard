@@ -9,7 +9,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { DataTable } from "./DataTable";
 import { getColumns } from "./Columns";
 import type { TdSignal } from "./types";
-import { mockSignals } from "./mockData";
+import { apiService } from "./types";  // Adjust path if apiService is in a different file
 import { toast } from "sonner";
 import {
     Dialog,
@@ -27,24 +27,42 @@ interface SignalsProps {
 const Signals = ({ signalType }: SignalsProps) => {
     const navigate = useNavigate();
     const [openDeleteDialog, setOpenDeleteDialog] = React.useState(false);
-    const [selectedSignalId, setSelectedSignalId] = React.useState<number | null>(null);
+    const [selectedSignalId, setSelectedSignalId] = React.useState<string | null>(null);
+    const [data, setData] = React.useState<TdSignal[]>([]);
+    const [loading, setLoading] = React.useState(true);
 
-    const fullData: TdSignal[] = mockSignals;
-    const filteredData = fullData.filter(item => item.signalType === signalType);
+    React.useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const signals = await apiService.getSignals();
+                setData(signals);
+            } catch (error) {
+                toast.error("Failed to load signals");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const filteredData = data.filter(item => item.signalType === signalType);
     const addPath = signalType === 'Paid' ? '/paidsignals/add' : '/freesignals/add';
 
-    const handleOpenDelete = (id: number) => {
-        setSelectedSignalId(id);
+    const handleOpenDelete = (id: string | number) => {
+        setSelectedSignalId(typeof id === 'string' ? id : id.toString());
         setOpenDeleteDialog(true);
     };
 
-    const handleConfirmDelete = () => {
+    const handleConfirmDelete = async () => {
         if (selectedSignalId) {
-            // Simulate delete - filter out from mock
-            const updatedData = fullData.filter(item => item.id !== selectedSignalId);
-            // In real app, update mockSignals or refetch
-            toast.success('Signal deleted successfully!');
-            console.log('Deleted signal with id:', selectedSignalId);
+            try {
+                await apiService.deleteSignal(selectedSignalId);
+                const updatedData = await apiService.getSignals();
+                setData(updatedData);
+            } catch (error) {
+                toast.error('Failed to delete signal');
+            }
         }
         setOpenDeleteDialog(false);
         setSelectedSignalId(null);
@@ -54,6 +72,25 @@ const Signals = ({ signalType }: SignalsProps) => {
         setOpenDeleteDialog(false);
         setSelectedSignalId(null);
     };
+
+    if (loading) {
+        return (
+            <SidebarProvider style={
+                {
+                    "--sidebar-width": "calc(var(--spacing) * 50)",
+                    "--header-height": "calc(var(--spacing) * 12)",
+                } as React.CSSProperties
+            }>
+                <AppSidebar variant="inset" />
+                <SidebarInset>
+                    <SiteHeader title="Signals" />
+                    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+                        <div className="text-center">Loading...</div>
+                    </div>
+                </SidebarInset>
+            </SidebarProvider>
+        );
+    }
 
     return (
         <SidebarProvider style={

@@ -1,9 +1,10 @@
+// types.ts (or wherever apiService is defined - assuming it's exported here)
 import axios from "axios";
 import { toast } from "sonner";
 
 // Signal interface
 export interface TdSignal {
-    id?: number;
+    id?: string | number;  // API uses string, display as number
     signalType: string;
     category: string;
     stockName: string;
@@ -18,10 +19,10 @@ export interface TdSignal {
     updatedAt: string;
 }
 
-// Form data interface for create/update
+// Form data interface for create/update (fixed 'sector' to 'category')
 export interface SignalFormData {
     signalType: string;
-    sector: string;
+    category: string;  // Fixed from 'sector'
     stockName: string;
     marketSentiments: string;
     entry: number;
@@ -32,7 +33,7 @@ export interface SignalFormData {
     Strategy: string;
 }
 
-// Create Axios instance with base URL from .env (Vite)
+// Create Axios instance...
 const apiClient = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api",
     headers: {
@@ -50,7 +51,6 @@ export const apiService = {
                 return [];
             }
 
-            // Parse token if it’s stored as JSON, otherwise use it directly
             const authToken = token.startsWith("{") ? JSON.parse(token).id : token;
 
             const response = await apiClient.get("/TdSignals", {
@@ -60,7 +60,7 @@ export const apiService = {
             });
             const signals = response.data.map((signal: any) => ({
                 ...signal,
-                id: signal.id,
+                id: signal.id,  // string from API
             }));
             return signals;
         } catch (error: any) {

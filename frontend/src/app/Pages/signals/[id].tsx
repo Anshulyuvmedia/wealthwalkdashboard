@@ -9,24 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import type { TdSignal } from "./types";
-import { mockSignals } from "./mockData";
+import type { TdSignal, SignalFormData } from "./types";
+import { apiService } from "./types";  // Adjust path if needed
 import { toast } from "sonner";
-
-interface SignalFormData {
-    signalType: string;
-    category: string;
-    stockName: string;
-    marketSentiments: string;
-    entry: number;
-    target: number;
-    stopLoss: number;
-    exit: number;
-    tradeType: string;
-    Strategy: string;
-    createdAt: string;
-    updatedAt: string;
-}
 
 interface FormErrors {
     category?: string;
@@ -58,11 +43,10 @@ const EditSignal = () => {
         exit: 0,
         tradeType: '',
         Strategy: '',
-        createdAt: '',
-        updatedAt: '',
     });
     const [errors, setErrors] = React.useState<FormErrors>({});
     const [loading, setLoading] = React.useState(true);
+    const [submitting, setSubmitting] = React.useState(false);
 
     React.useEffect(() => {
         const fetchSignal = async () => {
@@ -71,8 +55,8 @@ const EditSignal = () => {
                 navigate(basePath);
                 return;
             }
-            const signal = mockSignals.find(s => s.id === parseInt(id || '0'));
-            if (signal) {
+            try {
+                const signal = await apiService.getSignal(id);
                 setFormData({
                     signalType: signal.signalType,
                     category: signal.category,
@@ -84,14 +68,13 @@ const EditSignal = () => {
                     exit: signal.exit,
                     tradeType: signal.tradeType,
                     Strategy: signal.Strategy,
-                    createdAt: signal.createdAt,
-                    updatedAt: signal.updatedAt,
                 });
-            } else {
+            } catch (error) {
                 toast.error('Signal not found');
                 navigate(basePath);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         fetchSignal();
     }, [id, navigate, basePath]);
@@ -143,13 +126,15 @@ const EditSignal = () => {
             toast.error('Please fix the errors in the form');
             return;
         }
-        const updatedFormData = {
-            ...formData,
-            updatedAt: new Date().toISOString(),
-        };
-        toast.success('Signal updated successfully!');
-        console.log('Updating signal:', updatedFormData);
-        navigate(basePath);
+        setSubmitting(true);
+        try {
+            await apiService.updateSignal(id!, formData);
+            navigate(basePath);
+        } catch (error) {
+            // Error handled in apiService
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleCancel = () => {
@@ -198,22 +183,21 @@ const EditSignal = () => {
                                     type="button"
                                     variant="outline"
                                     onClick={handleCancel}
+                                    disabled={submitting}
                                 >
                                     Cancel
                                 </Button>
-                                <Button type="submit" className="bg-indigo-600 text-white hover:bg-indigo-700">
-                                    Update Signal
+                                <Button type="submit" className="bg-indigo-600 text-white hover:bg-indigo-700" disabled={submitting}>
+                                    {submitting ? 'Updating...' : 'Update Signal'}
                                 </Button>
                             </div>
                         </div>
 
                         <Card>
                             <CardHeader>
-                                <div className="flex justify-content-between col-span-6">
-                                    <div>
-                                        <CardTitle>{formData.signalType} Signal Details</CardTitle>
-                                    </div>
-                                    <div>{new Date(formData.createdAt).toLocaleString()}</div>
+                                <div className="flex justify-between">
+                                    <CardTitle>{formData.signalType} Signal Details</CardTitle>
+                                    <div>{new Date().toLocaleString()}</div>  {/* Use current date or fetch createdAt separately if needed */}
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-6">
@@ -225,6 +209,7 @@ const EditSignal = () => {
                                         <Select
                                             value={formData.category}
                                             onValueChange={(value) => handleSelectChange("category", value)}
+                                            disabled={submitting}
                                         >
                                             <SelectTrigger className="mt-1">
                                                 <SelectValue placeholder="Select Category" />
@@ -246,6 +231,7 @@ const EditSignal = () => {
                                         <Select
                                             value={formData.stockName}
                                             onValueChange={(value) => handleSelectChange("stockName", value)}
+                                            disabled={submitting}
                                         >
                                             <SelectTrigger className="mt-1">
                                                 <SelectValue placeholder="Select Stock" />
@@ -269,6 +255,7 @@ const EditSignal = () => {
                                         <Select
                                             value={formData.marketSentiments}
                                             onValueChange={(value) => handleSelectChange("marketSentiments", value)}
+                                            disabled={submitting}
                                         >
                                             <SelectTrigger className="mt-1">
                                                 <SelectValue placeholder="Select sentiment" />
@@ -290,6 +277,7 @@ const EditSignal = () => {
                                         <Select
                                             value={formData.tradeType}
                                             onValueChange={(value) => handleSelectChange("tradeType", value)}
+                                            disabled={submitting}
                                         >
                                             <SelectTrigger className="mt-1">
                                                 <SelectValue placeholder="Select trade type" />
@@ -318,6 +306,7 @@ const EditSignal = () => {
                                             className={`mt-1 ${errors.entry ? "border-red-500" : ""}`}
                                             step="0.01"
                                             min="0"
+                                            disabled={submitting}
                                         />
                                         {errors.entry && (
                                             <p className="text-sm text-red-500 mt-1">{errors.entry}</p>
@@ -337,6 +326,7 @@ const EditSignal = () => {
                                             className={`mt-1 ${errors.target ? "border-red-500" : ""}`}
                                             step="0.01"
                                             min="0"
+                                            disabled={submitting}
                                         />
                                         {errors.target && (
                                             <p className="text-sm text-red-500 mt-1">{errors.target}</p>
@@ -356,6 +346,7 @@ const EditSignal = () => {
                                             className={`mt-1 ${errors.stopLoss ? "border-red-500" : ""}`}
                                             step="0.01"
                                             min="0"
+                                            disabled={submitting}
                                         />
                                         {errors.stopLoss && (
                                             <p className="text-sm text-red-500 mt-1">{errors.stopLoss}</p>
@@ -375,6 +366,7 @@ const EditSignal = () => {
                                             className={`mt-1 ${errors.exit ? "border-red-500" : ""}`}
                                             step="0.01"
                                             min="0"
+                                            disabled={submitting}
                                         />
                                         {errors.exit && (
                                             <p className="text-sm text-red-500 mt-1">{errors.exit}</p>
@@ -392,6 +384,7 @@ const EditSignal = () => {
                                             onChange={handleInputChange}
                                             placeholder="Enter strategy (e.g., Momentum)"
                                             className={`mt-1 ${errors.Strategy ? "border-red-500" : ""}`}
+                                            disabled={submitting}
                                         />
                                         {errors.Strategy && (
                                             <p className="text-sm text-red-500 mt-1">{errors.Strategy}</p>

@@ -122,5 +122,9 @@
   "MarketIndex": {
     "dataSource": "mongoDB",
     "public": true
+  },
+  "TdSignals": {
+    "dataSource": "mongoDB",
+    "public": true
   }
 }

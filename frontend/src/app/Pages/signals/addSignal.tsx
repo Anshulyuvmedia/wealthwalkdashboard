@@ -9,23 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import type { TdSignal } from "./types";
+import type { SignalFormData } from "./types";
+import { apiService } from "./types";  // Adjust path if needed
 import { toast } from "sonner";
-
-interface SignalFormData {
-    signalType: string;
-    category: string;
-    stockName: string;
-    marketSentiments: string;
-    entry: number;
-    target: number;
-    stopLoss: number;
-    exit: number;
-    tradeType: string;
-    Strategy: string;
-    createdAt: string;
-    updatedAt: string;
-}
 
 interface FormErrors {
     category?: string;
@@ -46,7 +32,6 @@ const AddSignal = () => {
     const isPaid = pathname.includes('/paidsignals');
     const signalType = isPaid ? 'Paid' : 'Free';
     const basePath = isPaid ? '/paidsignals' : '/freesignals';
-    const currentDateTime = new Date().toISOString();
     const [formData, setFormData] = React.useState<SignalFormData>({
         signalType,
         category: '',
@@ -58,10 +43,9 @@ const AddSignal = () => {
         exit: 0,
         tradeType: '',
         Strategy: '',
-        createdAt: currentDateTime,
-        updatedAt: currentDateTime,
     });
     const [errors, setErrors] = React.useState<FormErrors>({});
+    const [submitting, setSubmitting] = React.useState(false);
 
     const categoryOptions = {
         Index: ['banknifty', 'Nifty50'],
@@ -110,9 +94,15 @@ const AddSignal = () => {
             toast.error('Please fix the errors in the form');
             return;
         }
-        toast.success('Signal created successfully!');
-        console.log('Submitting signal:', formData);
-        navigate(basePath);
+        setSubmitting(true);
+        try {
+            await apiService.createSignal(formData);
+            navigate(basePath);
+        } catch (error) {
+            // Error handled in apiService
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleCancel = () => {
@@ -141,11 +131,12 @@ const AddSignal = () => {
                                     type="button"
                                     variant="outline"
                                     onClick={handleCancel}
+                                    disabled={submitting}
                                 >
                                     Cancel
                                 </Button>
-                                <Button type="submit" className="bg-indigo-600 text-white hover:bg-indigo-700">
-                                    Create Signal
+                                <Button type="submit" className="bg-indigo-600 text-white hover:bg-indigo-700" disabled={submitting}>
+                                    {submitting ? 'Creating...' : 'Create Signal'}
                                 </Button>
                             </div>
                         </div>
@@ -163,6 +154,7 @@ const AddSignal = () => {
                                         <Select
                                             value={formData.category}
                                             onValueChange={(value) => handleSelectChange("category", value)}
+                                            disabled={submitting}
                                         >
                                             <SelectTrigger className="mt-1">
                                                 <SelectValue placeholder="Select Category" />
@@ -184,6 +176,7 @@ const AddSignal = () => {
                                         <Select
                                             value={formData.stockName}
                                             onValueChange={(value) => handleSelectChange("stockName", value)}
+                                            disabled={submitting}
                                         >
                                             <SelectTrigger className="mt-1">
                                                 <SelectValue placeholder="Select Stock" />
@@ -207,6 +200,7 @@ const AddSignal = () => {
                                         <Select
                                             value={formData.marketSentiments}
                                             onValueChange={(value) => handleSelectChange("marketSentiments", value)}
+                                            disabled={submitting}
                                         >
                                             <SelectTrigger className="mt-1">
                                                 <SelectValue placeholder="Select sentiment" />
@@ -228,6 +222,7 @@ const AddSignal = () => {
                                         <Select
                                             value={formData.tradeType}
                                             onValueChange={(value) => handleSelectChange("tradeType", value)}
+                                            disabled={submitting}
                                         >
                                             <SelectTrigger className="mt-1">
                                                 <SelectValue placeholder="Select trade type" />
@@ -256,6 +251,7 @@ const AddSignal = () => {
                                             className={`mt-1 ${errors.entry ? "border-red-500" : ""}`}
                                             step="0.01"
                                             min="0"
+                                            disabled={submitting}
                                         />
                                         {errors.entry && (
                                             <p className="text-sm text-red-500 mt-1">{errors.entry}</p>
@@ -275,6 +271,7 @@ const AddSignal = () => {
                                             className={`mt-1 ${errors.target ? "border-red-500" : ""}`}
                                             step="0.01"
                                             min="0"
+                                            disabled={submitting}
                                         />
                                         {errors.target && (
                                             <p className="text-sm text-red-500 mt-1">{errors.target}</p>
@@ -294,6 +291,7 @@ const AddSignal = () => {
                                             className={`mt-1 ${errors.stopLoss ? "border-red-500" : ""}`}
                                             step="0.01"
                                             min="0"
+                                            disabled={submitting}
                                         />
                                         {errors.stopLoss && (
                                             <p className="text-sm text-red-500 mt-1">{errors.stopLoss}</p>
@@ -313,6 +311,7 @@ const AddSignal = () => {
                                             className={`mt-1 ${errors.exit ? "border-red-500" : ""}`}
                                             step="0.01"
                                             min="0"
+                                            disabled={submitting}
                                         />
                                         {errors.exit && (
                                             <p className="text-sm text-red-500 mt-1">{errors.exit}</p>
@@ -330,6 +329,7 @@ const AddSignal = () => {
                                             onChange={handleInputChange}
                                             placeholder="Enter strategy (e.g., Momentum)"
                                             className={`mt-1 ${errors.Strategy ? "border-red-500" : ""}`}
+                                            disabled={submitting}
                                         />
                                         {errors.Strategy && (
                                             <p className="text-sm text-red-500 mt-1">{errors.Strategy}</p>

@@ -1,0 +1,70 @@
+{
+    "name": "TdSignals",
+    "base": "PersistedModel",
+    "idInjection": true,
+    "options": {
+        "validateUpsert": true
+    },
+    "properties": {
+        "signalType": {
+            "type": "string",
+            "required": true
+        },
+        "category": {
+            "type": "string",
+            "required": true
+        },
+        "stockName": {
+            "type": "string",
+            "required": true
+        },
+        "marketSentiments": {
+            "type": "string",
+            "required": true
+        },
+        "entry": {
+            "type": "number",
+            "required": true
+        },
+        "target": {
+            "type": "number",
+            "required": true
+        },
+        "stopLoss": {
+            "type": "number",
+            "required": true
+        },
+        "exit": {
+            "type": "number",
+            "required": true
+        },
+        "tradeType": {
+            "type": "string",
+            "required": true
+        },
+        "Strategy": {
+            "type": "string",
+            "required": true
+        },
+        "createdAt": {
+            "type": "date",
+            "defaultFn": "now"
+        },
+        "updatedAt": {
+            "type": "date",
+            "defaultFn": "now"
+        }
+    },
+    "validations": [],
+    "relations": {},
+    "acls": [
+        {
+            "accessType": "",
+            "principalType": "ROLE",
+            "principalId": "$everyone",
+            "permission": "ALLOW",
+            "property": ""
+        }
+    ],
+    "methods": {}
+}
