@@ -2,9 +2,56 @@
 
 const app = require('../../server/server');
 const loopback = require('loopback');
+const path = require('path');
+const fs = require('fs');
 
 module.exports = function (TdUser) {
     const smsService = app.dataSources.smsService;
+
+    // File upload handling
+    TdUser.beforeRemote('create', function (ctx, unused, next) {
+        handleFileUpload(ctx, next);
+    });
+
+    TdUser.beforeRemote('prototype.updateAttributes', function (ctx, modelInstance, next) {
+        handleFileUpload(ctx, next);
+    });
+
+    function handleFileUpload(ctx, next) {
+        try {
+            console.log('handleFileUpload ctx.args.data:', ctx.args.data);
+            console.log('handleFileUpload ctx.req.files:', ctx.req.files);
+            // Initialize files array if not present
+            ctx.args.data.files = ctx.args.data.files || [];
+
+            if (ctx.req.files && ctx.req.files.profileImage && ctx.req.files.profileImage[0]) {
+                const file = ctx.req.files.profileImage[0];
+                let subDir = ctx.args.data.fileType || 'profiles'; // Default to profiles
+                // Sanitize subDir to prevent path traversal
+                subDir = subDir.replace(/[^a-zA-Z0-9_-]/g, '');
+                const uploadDir = path.join(__dirname, '../../Uploads', subDir);
+                if (!fs.existsSync(uploadDir)) {
+                    console.log(`Creating directory: ${uploadDir}`);
+                    fs.mkdirSync(uploadDir, { recursive: true });
+                }
+                const fileName = `${Date.now()}_${file.originalname}`;
+                const filePath = path.join(uploadDir, fileName);
+                // Save file from memory to disk
+                fs.writeFileSync(filePath, file.buffer);
+                // Store the file path in the data
+                ctx.args.data.profileImage = `/Uploads/${subDir}/${fileName}`;
+                ctx.args.data.files.push({
+                    path: `/Uploads/${subDir}/${fileName}`,
+                    type: subDir,
+                    uploadedAt: new Date()
+                });
+            }
+            next();
+        } catch (error) {
+            console.error('Error in handleFileUpload:', error);
+            next(error);
+        }
+    }
 
     /*** Generate OTP ***/
     TdUser.generateOtp = async function (data) {
@@ -175,7 +222,13 @@ module.exports = function (TdUser) {
             const updatedUser = await TdUser.findOne({ where: { phone } });
             console.log(`Post-update check: OTP=${updatedUser.otp}, Expiry=${updatedUser.otpExpiry}`);
 
-            return { success: true, message: 'OTP sent successfully', otp, expiry };
+            // Return OTP directly since SMS service is not used
+            return {
+                success: true,
+                message: 'OTP generated successfully. Use the provided OTP for verification.',
+                otp, // For testing purposes; remove in production
+                expiry
+            };
         } catch (error) {
             console.error('Error in loginGenerateOtp:', error.message, error.stack);
             throw error;
@@ -240,40 +293,63 @@ module.exports = function (TdUser) {
     });
 
     /*** Validate Token ***/
+    // In TdUser.js
     TdUser.validateToken = async function (req) {
         const tokenId = req.headers.authorization?.replace('Bearer ', '');
+        console.log('validateToken - Token ID:', tokenId); // Debug
         if (!tokenId) {
             const error = new Error('No token provided');
             error.statusCode = 401;
             throw error;
         }
-
         const AccessToken = loopback.getModel('AccessToken');
         const token = await AccessToken.findOne({ where: { id: tokenId } });
+        console.log('validateToken - Found token:', token); // Debug
         if (!token) {
             const error = new Error('Invalid token');
             error.statusCode = 401;
             throw error;
         }
-
         const now = new Date();
         const created = new Date(token.created);
-        const ttl = token.ttl * 1000; // Convert seconds to milliseconds
+        const ttl = token.ttl * 1000;
+        console.log('validateToken - Token created:', created, 'TTL:', ttl, 'Now:', now, 'Expires:', new Date(created.getTime() + ttl)); // Debug
         if (now > new Date(created.getTime() + ttl)) {
             const error = new Error('Token expired');
             error.statusCode = 401;
             throw error;
         }
-
         const user = await TdUser.findOne({ where: { id: token.userId } });
+        console.log('validateToken - Found user:', user); // Debug
         if (!user) {
             const error = new Error('User not found');
             error.statusCode = 404;
             throw error;
         }
-
         return { valid: true, user };
     };
+
+    TdUser.beforeRemote('prototype.updateAttributes', async function (ctx, modelInstance, next) {
+        console.log('PATCH - Full Request:', {
+            method: ctx.req.method,
+            url: ctx.req.url,
+            headers: ctx.req.headers,
+            body: ctx.args.data,
+            accessToken: ctx.req.accessToken,
+            user: ctx.req.user
+        });
+        if (!ctx.req.accessToken) {
+            console.log('PATCH - No accessToken, checking Authorization header');
+            const authHeader = ctx.req.headers.authorization;
+            if (authHeader) {
+                const AccessToken = app.models.AccessToken;
+                const tokenId = authHeader.replace('Bearer ', '');
+                const token = await AccessToken.findOne({ where: { id: tokenId } });
+                console.log('PATCH - Manually fetched token:', token);
+            }
+        }
+        handleFileUpload(ctx, next);
+    });
 
     TdUser.remoteMethod('validateToken', {
         accepts: [{ arg: 'req', type: 'object', http: { source: 'req' } }],
@@ -370,7 +446,7 @@ module.exports = function (TdUser) {
         if (userObj.status === newStatus) throw new Error('The old status is the same');
 
         const dltTemplateId = '1207162375011147858';
-        const message = `Your account is ${newStatus === 'I' ? 'de-activated' : 'activated'}`;
+        const message = `Your account is ${newStatus === 'inactive' ? 'de-activated' : 'activated'}`;
 
         await new Promise((resolve, reject) => {
             smsService.sendSMS(userObj.phone, message, dltTemplateId, (err, response) => {
@@ -448,43 +524,133 @@ module.exports = function (TdUser) {
         http: { path: '/generateAccessToken', verb: 'post' },
     });
 
-    /*** Send OTP (Login) ***/
-    TdUser.sendOTP = async function (data) {
-        const { phone, mode } = data;
-
-        if (!phone || !mode) {
-            const error = new Error('Phone number and mode are required');
+    /*** Register with Password (for Website) ***/
+    TdUser.registerWithPassword = async function (data) {
+        const { email, phone, password, contactName, city, state, country, referrald, isTermsAgreed, userType = 'user' } = data;
+        console.log('user data', data);
+        // Validation
+        if (!email || !phone || !password || !contactName || !isTermsAgreed) {
+            const error = new Error('Email, phone, password, name, and terms agreement are required');
             error.statusCode = 400;
             throw error;
         }
 
-        if (mode !== 'phone') {
-            const error = new Error('Only phone mode is supported');
+        // Check if user exists
+        const existingUser = await TdUser.findOne({
+            where: { or: [{ email }, { phone }] }
+        });
+
+        if (existingUser) {
+            const error = new Error('Email or phone already registered');
             error.statusCode = 400;
             throw error;
         }
 
-        const phoneRegex = /^\d{10,15}$/;
-        if (!phoneRegex.test(phone)) {
-            const error = new Error('Invalid phone number. Must be 10-15 digits.');
-            error.statusCode = 400;
-            throw error;
-        }
+        // Create user
+        const user = await TdUser.create({
+            email,
+            phone,
+            username: email,
+            password,
+            contactName,
+            userType,
+            city,
+            state,
+            country: country || 'IN',
+            referrald: referrald || null,
+            isTermsAgreed: true,
+            phoneVerified: false,
+            status: 'active',
+            isTemporary: false,
+            planId: 'I'
+        });
 
-        const existingUser = await TdUser.findOne({ where: { phone, isTemporary: false } });
-        if (!existingUser) {
-            const error = new Error('Phone number not registered');
-            error.statusCode = 400;
-            throw error;
-        }
-
-        const otp = await generateOtp(phone, existingUser.contactName, existingUser.email, false);
-        return { success: true, otp };
+        return user;
     };
 
-    TdUser.remoteMethod('sendOTP', {
+    TdUser.remoteMethod('registerWithPassword', {
         accepts: { arg: 'data', type: 'object', http: { source: 'body' } },
+        returns: { arg: 'user', type: 'object', root: true },
+        http: { path: '/registerWithPassword', verb: 'post' },
+    });
+
+    /*** Login with Password (for Website) ***/
+    TdUser.loginWithPassword = async function (credentials) {
+        const { email, password } = credentials;
+        console.log('loginWithPassword - Credentials:', { email, password }); // Debug
+        if (!email || !password) {
+            const error = new Error('Email and password are required');
+            error.statusCode = 400;
+            throw error;
+        }
+        const user = await TdUser.findOne({
+            where: { or: [{ email }, { username: email }] }
+        });
+        console.log('loginWithPassword - Found user:', user ? user.id : null); // Debug
+        if (!user) {
+            console.log('loginWithPassword - User not found:', email);
+            const error = new Error('Invalid credentials');
+            error.statusCode = 401;
+            throw error;
+        }
+        const isPasswordValid = await user.hasPassword(password);
+        console.log('loginWithPassword - Password valid:', isPasswordValid); // Debug
+        if (!isPasswordValid) {
+            console.log('loginWithPassword - Invalid password for:', email);
+            const error = new Error('Invalid credentials');
+            error.statusCode = 401;
+            throw error;
+        }
+        if (user.status !== 'active') {
+            console.log('loginWithPassword - Account not active:', email);
+            const error = new Error('Account is not active');
+            error.statusCode = 403;
+            throw error;
+        }
+        await TdUser.updateAll(
+            { id: user.id },
+            { lastLogin: new Date() }
+        );
+        console.log('loginWithPassword - Creating token for:', email); // Debug
+        const token = await user.createAccessToken({ ttl: 1209600 });
+        console.log('loginWithPassword - Token created:', token.id); // Debug
+        return { user, token };
+    };
+
+    TdUser.remoteMethod('loginWithPassword', {
+        accepts: { arg: 'credentials', type: 'object', http: { source: 'body' } },
         returns: { arg: 'result', type: 'object', root: true },
-        http: { path: '/sendOTP', verb: 'post' },
+        http: { path: '/loginWithPassword', verb: 'post' },
+    });
+
+    TdUser.upload = async function (ctx) {
+        try {
+            if (!ctx.req.files || !ctx.req.files.profileImage) {
+                const error = new Error('No file provided');
+                error.statusCode = 400;
+                throw error;
+            }
+            const file = ctx.req.files.profileImage[0];
+            const subDir = ctx.args.data?.fileType || 'profiles';
+            const sanitizedSubDir = subDir.replace(/[^a-zA-Z0-9_-]/g, '');
+            const uploadDir = path.join(__dirname, '../../Uploads', sanitizedSubDir);
+            await fs.promises.mkdir(uploadDir, { recursive: true });
+            const fileName = `${Date.now()}_${file.originalname}`;
+            const filePath = path.join(uploadDir, fileName);
+            await fs.promises.writeFile(filePath, file.buffer);
+            const url = `/Uploads/${sanitizedSubDir}/${fileName}`;
+            return { url };
+        } catch (error) {
+            console.error('Error in upload:', error);
+            throw error;
+        }
+    };
+
+    TdUser.remoteMethod('upload', {
+        accepts: [
+            { arg: 'ctx', type: 'object', http: { source: 'context' } }
+        ],
+        returns: { arg: 'result', type: 'object', root: true },
+        http: { path: '/upload', verb: 'post' },
     });
 };

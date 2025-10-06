@@ -133,12 +133,12 @@ module.exports = function (server) {
                 if (err) console.error(`Simulation error updating ${index.name}:`, err);
             });
         });
-        console.log("Market index data updated with simulated realistic values");
+        // console.log("Market index data updated with simulated realistic values");
     };
 
     // Run simulation immediately and then every 30 seconds
     simulateDynamicData(); // Initial run
-    setInterval(simulateDynamicData, 30000); // Update every 30 seconds
+    // setInterval(simulateDynamicData, 30000); // Update every 30 seconds
 
     // Placeholder for dynamic API integration (uncomment and configure when API is available)
     /*

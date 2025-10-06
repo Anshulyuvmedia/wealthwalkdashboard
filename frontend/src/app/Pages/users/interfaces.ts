@@ -1,21 +1,49 @@
 export interface TdUser {
     id: string;
-    email: string;
     contactName: string;
-    password: string;
-    userType: "admin" | "user";
+    email: string;
+    phone: string;
+    username?: string;
+    password?: string;
+    userType: string;
     status: "active" | "inactive";
     phoneVerified: boolean;
+    isTermsAgreed: boolean;
+    twoFaEnabled?: boolean;
     city?: string;
     state?: string;
     country?: string;
-    lastLogin?: string;
-    username?: string;
+    referrald?: string;
     planId?: string;
+    expiryDate?: string; // Fixed typo
+    endDate?: string;
     profileImage?: string;
+    files?: Array<{ path: string; type: string; uploadedAt: string }>;
+    lastLogin?: string;
+    otp?: string;
+    otpExpiry?: string;
+    codeCreatedAt?: string;
+    isTemporary?: boolean;
 }
 
-export interface UserFormData extends Partial<TdUser> {
+export interface UserFormData {
+    contactName?: string;
+    email?: string;
+    phone?: string;
+    username?: string;
     password?: string;
+    userType?: string;
+    status?: "active" | "inactive";
+    phoneVerified?: boolean;
+    isTermsAgreed?: boolean;
+    twoFaEnabled?: boolean;
+    city?: string;
+    state?: string;
+    country?: string;
+    referrald?: string;
+    planId?: string;
+    expiryDate?: string; // Fixed typo
+    endDate?: string;
     profileImageFile?: File;
+    fileType?: string;
 }

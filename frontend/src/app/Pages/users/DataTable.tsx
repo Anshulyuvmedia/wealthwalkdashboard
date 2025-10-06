@@ -24,17 +24,15 @@ interface DataTableProps {
     columns: ColumnDef<TdUser, any>[];
     data: TdUser[];
     refreshData: () => void;
-    onCreateOrUpdate: (formData: any) => void;
-    onDelete: (id: string) => void;
     onToggleStatus: (id: string, status: "active" | "inactive") => void;
-    editUser: TdUser | null;
-    setEditUser: (user: TdUser | null) => void;
+    setEditUser: (user: TdUser) => void;
     setDeleteUserId: (id: string | null) => void;
 }
 
 export function DataTable({
     columns,
     data,
+    refreshData,
     onToggleStatus,
     setEditUser,
     setDeleteUserId,

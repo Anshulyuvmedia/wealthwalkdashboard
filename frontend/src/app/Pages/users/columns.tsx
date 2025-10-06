@@ -47,6 +47,11 @@ export const columns: ColumnDef<TdUser>[] = [
         cell: ({ getValue }) => getValue() || "N/A",
     },
     {
+        accessorKey: "phone",
+        header: "Phone",
+        cell: ({ getValue }) => getValue() || "N/A",
+    },
+    {
         accessorKey: "status",
         header: "Status",
         cell: ({ row, table }) => {
@@ -73,12 +78,22 @@ export const columns: ColumnDef<TdUser>[] = [
         cell: ({ getValue }) => getValue() || "N/A",
     },
     {
+        accessorKey: "phoneVerified",
+        header: "Phone Verified",
+        cell: ({ getValue }) => (getValue() ? "Yes" : "No"),
+    },
+    {
+        accessorKey: "twoFaEnabled",
+        header: "2FA",
+        cell: ({ getValue }) => (getValue() ? "Yes" : "No"),
+    },
+    {
         id: "actions",
         header: "Action",
         cell: ({ row, table }) => {
             const user = row.original;
             const { setEditUser, setDeleteUserId } = table.options.meta as {
-                setEditUser: (user: TdUser | null) => void;
+                setEditUser: (user: TdUser) => void;
                 setDeleteUserId: (id: string | null) => void;
             };
             return (
@@ -95,7 +110,6 @@ export const columns: ColumnDef<TdUser>[] = [
                         <IconEdit className="mr-1 h-4 w-4" /> Edit
                     </Button>
                     <Button
-                        // variant="destructive"
                         size="sm"
                         onClick={(e) => {
                             e.stopPropagation();
