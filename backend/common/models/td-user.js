@@ -335,20 +335,31 @@ module.exports = function (TdUser) {
             url: ctx.req.url,
             headers: ctx.req.headers,
             body: ctx.args.data,
-            accessToken: ctx.req.accessToken,
-            user: ctx.req.user
+            accessToken: ctx.req.accessToken ? { id: ctx.req.accessToken.id, userId: ctx.req.accessToken.userId } : null,
+            user: ctx.req.user,
         });
-        if (!ctx.req.accessToken) {
-            console.log('PATCH - No accessToken, checking Authorization header');
-            const authHeader = ctx.req.headers.authorization;
-            if (authHeader) {
-                const AccessToken = app.models.AccessToken;
-                const tokenId = authHeader.replace('Bearer ', '');
-                const token = await AccessToken.findOne({ where: { id: tokenId } });
-                console.log('PATCH - Manually fetched token:', token);
+        try {
+            if (!ctx.req.accessToken) {
+                console.log('PATCH - No accessToken, headers:', ctx.req.headers);
+                const error = new Error('No valid access token provided');
+                error.statusCode = 401;
+                throw error;
             }
+            // Restrict phone updates
+            const restrictedFields = ['phone'];
+            const requestedChanges = ctx.args.data;
+            for (const field of restrictedFields) {
+                if (requestedChanges[field]) {
+                    const error = new Error(`Updating ${field} requires OTP re-verification`);
+                    error.statusCode = 403;
+                    throw error;
+                }
+            }
+            handleFileUpload(ctx, next);
+        } catch (error) {
+            console.error('Error in beforeRemote:', error);
+            next(error);
         }
-        handleFileUpload(ctx, next);
     });
 
     TdUser.remoteMethod('validateToken', {

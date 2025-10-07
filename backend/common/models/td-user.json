@@ -24,7 +24,13 @@
     "lastLogin": { "type": "date" }
   },
   "validations": [],
-  "relations": {},
+  "relations": {
+    "accessTokens": {
+      "type": "hasMany",
+      "model": "AccessToken",
+      "foreignKey": "userId"
+    }
+  },
   "acls": [
     {
       "accessType": "*",

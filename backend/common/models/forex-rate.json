@@ -1,0 +1,56 @@
+{
+    "name": "ForexRate",
+    "base": "PersistedModel",
+    "idInjection": true,
+    "options": {
+        "validateUpsert": true
+    },
+    "properties": {
+        "assetType": {
+            "type": "string",
+            "required": true
+        },
+        "currencyPair": {
+            "type": "string",
+            "required": true
+        },
+        "rate": {
+            "type": "number",
+            "required": true
+        },
+        "changePercent": {
+            "type": "number",
+            "required": true
+        },
+        "timestamp": {
+            "type": "date",
+            "required": true
+        },
+        "isDelayed": {
+            "type": "boolean",
+            "required": true
+        }
+    },
+    "indexes": {
+        "unique_pair_type": {
+            "keys": {
+                "currencyPair": 1,
+                "assetType": 1
+            },
+            "options": {
+                "unique": true
+            }
+        }
+    },
+    "validations": [],
+    "relations": {},
+    "acls": [
+        {
+            "accessType": "*",
+            "principalType": "ROLE",
+            "principalId": "$everyone",
+            "permission": "ALLOW"
+        }
+    ],
+    "methods": {}
+}

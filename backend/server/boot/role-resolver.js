@@ -1,26 +1,37 @@
-// In server/boot/role-resolver.js
-'use strict';
-
 module.exports = function (app) {
     const Role = app.models.Role;
-    const TdUser = app.models.TdUser;
-
-    Role.registerResolver('admin', async function (role, ctx) {
-        console.log('Role resolver - Context accessToken:', ctx.accessToken); // Debug
-        const userId = ctx.accessToken?.userId;
-        console.log('Role resolver - userId:', userId);
+    Role.registerResolver('$authenticated', function (role, context, cb) {
+        const userId = context.accessToken?.userId;
+        console.log('Role resolver - $authenticated:', { userId, accessToken: context.accessToken });
         if (!userId) {
-            console.log('Role resolver - No userId, denying access');
-            return false;
+            console.log('Role resolver - $authenticated: No userId, denying access');
+            return cb(null, false);
         }
-        const user = await TdUser.findById(userId);
-        console.log('Role resolver - User:', user ? { id: user.id, userType: user.userType } : null);
-        if (!user) {
-            console.log('Role resolver - User not found:', userId);
-            return false;
+        const TdUser = app.models.TdUser;
+        TdUser.findById(userId, (err, user) => {
+            if (err || !user) {
+                console.error('Role resolver - $authenticated: Error or no user:', err, user);
+                return cb(err || new Error('User not found'));
+            }
+            console.log('Role resolver - $authenticated: User found:', user.id, user.userType);
+            return cb(null, true);
+        });
+    });
+    Role.registerResolver('admin', function (role, context, cb) {
+        const userId = context.accessToken?.userId;
+        console.log('Role resolver - admin:', { userId, accessToken: context.accessToken });
+        if (!userId) {
+            console.log('Role resolver - admin: No userId, denying access');
+            return cb(null, false);
         }
-        const isAdmin = user.userType === 'admin';
-        console.log('Role resolver - Is admin:', isAdmin);
-        return isAdmin;
+        const TdUser = app.models.TdUser;
+        TdUser.findById(userId, (err, user) => {
+            if (err || !user) {
+                console.error('Role resolver - admin: Error or no user:', err, user);
+                return cb(err || new Error('User not found'));
+            }
+            console.log('Role resolver - admin: User found:', user.id, user.userType);
+            return cb(null, user.userType === 'admin');
+        });
     });
 };
