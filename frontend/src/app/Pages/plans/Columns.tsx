@@ -4,7 +4,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { apiService } from "./apiService";
 import { toast } from "sonner";
 import type { TdPlan } from "./types";
-import { IconTrashX, IconEdit  } from '@tabler/icons-react';
+import { IconTrashX, IconEdit } from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
 
 export const columns: ColumnDef<TdPlan>[] = [
     {
@@ -33,9 +34,11 @@ export const columns: ColumnDef<TdPlan>[] = [
         header: "Features",
         cell: ({ row }) => (
             <ul className="list-disc pl-4 space-y-1 text-gray-300 dark:text-gray-400">
-                {row.original.fetures.map((feature, index) => (
-                    <li key={index}>{feature.title}</li>
-                ))}
+                {row.original.fetures
+                    .filter((feature) => feature.enabled)
+                    .map((feature, index) => (
+                        <li key={index}>{feature.title}</li>
+                    ))}
             </ul>
         ),
     },
@@ -57,7 +60,8 @@ export const columns: ColumnDef<TdPlan>[] = [
         id: "actions",
         header: "Actions",
         cell: ({ row, table }) => {
-            const { openEditModal, setPlans, plans } = table.options.meta as any;
+            const { setPlans, plans } = table.options.meta as any;
+            const navigate = useNavigate();
 
             const handleDelete = async () => {
                 try {
@@ -74,7 +78,7 @@ export const columns: ColumnDef<TdPlan>[] = [
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => openEditModal(row.original)}
+                        onClick={() => navigate(`/plans/edit/${row.original.id}`)}
                         className="border-gray-600 dark:border-gray-500 text-gray-200 dark:text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600"
                     >
                         <IconEdit stroke={2} /> Edit
@@ -89,7 +93,7 @@ export const columns: ColumnDef<TdPlan>[] = [
                                 <IconTrashX stroke={2} /> Delete
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px] bg-gray-800 dark:bg-gray-900 text-red-600 dark:text-red-600 rounded-lg shadow-xl">
+                        <DialogContent className="sm:max-w-[425px] bg-gray-800 dark:bg-gray-900 text-red-600 dark:text-red-red-600 rounded-lg shadow-xl">
                             <DialogHeader>
                                 <DialogTitle className="text-2xl">Delete Plan</DialogTitle>
                                 <DialogDescription className="text-white">
@@ -97,7 +101,6 @@ export const columns: ColumnDef<TdPlan>[] = [
                                 </DialogDescription>
                             </DialogHeader>
                             <DialogFooter className="flex justify-end gap-2">
-                                
                                 <Button
                                     variant="destructive"
                                     onClick={handleDelete}

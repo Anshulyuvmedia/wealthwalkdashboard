@@ -3,7 +3,7 @@ export interface TdPlan {
     planName: string;
     Duration: string;
     durationValue: number;
-    fetures: { title: string }[];
+    fetures: { title: string; enabled: boolean }[];
     pricing: number;
     createdAt: string;
     updateAt: string;

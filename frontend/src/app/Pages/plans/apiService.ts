@@ -2,7 +2,6 @@ import axios from "axios";
 import { toast } from "sonner";
 import type { TdPlan } from "./types";
 
-// Create Axios instance with base URL from .env (Vite)
 const apiClient = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api",
     headers: {
@@ -19,7 +18,7 @@ export const apiService = {
                 planName: plan.planName,
                 Duration: plan.Duration,
                 durationValue: plan.durationValue,
-                fetures: plan.fetures,
+                fetures: plan.fetures, // Now an array of { title: string; enabled: boolean }
                 pricing: plan.pricing,
                 createdAt: plan.createdAt,
                 updateAt: plan.updateAt,
@@ -27,6 +26,26 @@ export const apiService = {
         } catch (error) {
             console.error("Error fetching plans from API:", error);
             toast.error("Failed to fetch plans");
+            throw error;
+        }
+    },
+
+    getPlan: async (id: string): Promise<TdPlan> => {
+        try {
+            const response = await apiClient.get(`/TdPlans/${id}`);
+            return {
+                id: response.data.id,
+                planName: response.data.planName,
+                Duration: response.data.Duration,
+                durationValue: response.data.durationValue,
+                fetures: response.data.fetures,
+                pricing: response.data.pricing,
+                createdAt: response.data.createdAt,
+                updateAt: response.data.updateAt,
+            };
+        } catch (error) {
+            console.error(`Error fetching plan ${id}:`, error);
+            toast.error("Failed to fetch plan");
             throw error;
         }
     },
