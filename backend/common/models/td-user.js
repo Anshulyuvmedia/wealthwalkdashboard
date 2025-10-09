@@ -7,27 +7,111 @@ const fs = require('fs');
 
 module.exports = function (TdUser) {
     const smsService = app.dataSources.smsService;
+    // Disable phone updates
+    TdUser.validatesFormatOf('phone', { with: /^$/ });
+    TdUser.validatesLengthOf('phone', { is: 0 });
+
+    // Helper function to ensure roles exist and assign role based on userType
+    async function ensureAndAssignRole(userId, userType) {
+        try {
+            const Role = app.models.Role;
+            const RoleMapping = app.models.RoleMapping;
+            const roleName = userType === 'admin' ? 'admin' : 'user';
+
+            let role = await Role.findOne({ where: { name: roleName } });
+            if (!role) {
+                role = await Role.create({ name: roleName });
+                console.log(`Created ${roleName} role: ${role.id}`);
+            }
+
+            await RoleMapping.destroyAll({ principalId: userId, principalType: 'USER' });
+            console.log(`Cleared existing role mappings for user ${userId}`);
+
+            await RoleMapping.create({
+                principalType: 'USER',
+                principalId: userId,
+                roleId: role.id
+            });
+            console.log(`Assigned ${roleName} role to user ${userId} based on userType: ${userType}`);
+        } catch (error) {
+            console.error(`Error assigning ${userType} role to user ${userId}:`, error);
+            throw error;
+        }
+    }
 
     // File upload handling
+    function handleFileUpload(ctx, next) {
+        // console.log('handleFileUpload - Files:', ctx.req.files, 'Body:', ctx.args.data);
+        next();
+    }
+
     TdUser.beforeRemote('create', function (ctx, unused, next) {
         handleFileUpload(ctx, next);
     });
 
-    TdUser.beforeRemote('prototype.updateAttributes', function (ctx, modelInstance, next) {
-        handleFileUpload(ctx, next);
+    TdUser.beforeRemote('prototype.updateAttributes', async function (ctx, modelInstance, next) {
+        try {
+            if (!ctx.req.accessToken || !ctx.req.accessToken.userId) {
+                console.log('PATCH - Invalid accessToken:', ctx.req.accessToken);
+                const error = new Error('No valid access token provided');
+                error.statusCode = 401;
+                throw error;
+            }
+            const userId = ctx.req.accessToken.userId;
+            const targetUserId = ctx.args.id;
+            console.log(`PATCH - Authenticated userId: ${userId}, Target userId: ${targetUserId}`);
+
+            const roleMapping = await app.models.RoleMapping.findOne({
+                where: { principalId: userId, principalType: 'USER' }
+            });
+            if (!roleMapping) {
+                console.log(`PATCH - No role assigned to user ${userId}`);
+                const error = new Error('User has no role assigned');
+                error.statusCode = 403;
+                throw error;
+            }
+            const role = await app.models.Role.findById(roleMapping.roleId);
+            console.log(`PATCH - User ${userId} role: ${role.name}`);
+            if (role.name !== 'admin' && userId !== targetUserId) {
+                console.log(`PATCH - User ${userId} (role: ${role.name}) attempted to update user ${targetUserId}`);
+                const error = new Error('Only admins can update other users');
+                error.statusCode = 403;
+                throw error;
+            }
+
+            // Restrict phone and password updates
+            const restrictedFields = ['phone', 'password'];
+            const requestedChanges = ctx.args.data;
+            for (const field of restrictedFields) {
+                if (requestedChanges[field]) {
+                    console.log(`PATCH - Attempt to update restricted field: ${field}`);
+                    const error = new Error(`Updating ${field} is not allowed in this request`);
+                    error.statusCode = 403;
+                    throw error;
+                }
+            }
+
+            // Handle userType change
+            if (requestedChanges.userType) {
+                console.log(`PATCH - Updating userType to: ${requestedChanges.userType}`);
+                await ensureAndAssignRole(targetUserId, requestedChanges.userType);
+            }
+
+            next();
+        } catch (error) {
+            console.error('PATCH - Error in beforeRemote:', error);
+            next(error);
+        }
     });
 
     function handleFileUpload(ctx, next) {
         try {
             console.log('handleFileUpload ctx.args.data:', ctx.args.data);
             console.log('handleFileUpload ctx.req.files:', ctx.req.files);
-            // Initialize files array if not present
             ctx.args.data.files = ctx.args.data.files || [];
-
             if (ctx.req.files && ctx.req.files.profileImage && ctx.req.files.profileImage[0]) {
                 const file = ctx.req.files.profileImage[0];
-                let subDir = ctx.args.data.fileType || 'profiles'; // Default to profiles
-                // Sanitize subDir to prevent path traversal
+                let subDir = ctx.args.data.fileType || 'profiles';
                 subDir = subDir.replace(/[^a-zA-Z0-9_-]/g, '');
                 const uploadDir = path.join(__dirname, '../../Uploads', subDir);
                 if (!fs.existsSync(uploadDir)) {
@@ -36,9 +120,7 @@ module.exports = function (TdUser) {
                 }
                 const fileName = `${Date.now()}_${file.originalname}`;
                 const filePath = path.join(uploadDir, fileName);
-                // Save file from memory to disk
                 fs.writeFileSync(filePath, file.buffer);
-                // Store the file path in the data
                 ctx.args.data.profileImage = `/Uploads/${subDir}/${fileName}`;
                 ctx.args.data.files.push({
                     path: `/Uploads/${subDir}/${fileName}`,
@@ -57,7 +139,6 @@ module.exports = function (TdUser) {
     TdUser.generateOtp = async function (data) {
         const { email, phone, name, referralCode } = data;
 
-        // Validation
         if (!phone || !name || !email) {
             const error = new Error('Phone, name, and email are required');
             error.statusCode = 400;
@@ -79,7 +160,6 @@ module.exports = function (TdUser) {
         }
 
         try {
-            // Check if user exists
             let existingUser = await TdUser.findOne({
                 where: { or: [{ email }, { phone }] }
             });
@@ -88,7 +168,6 @@ module.exports = function (TdUser) {
 
             if (existingUser) {
                 if (existingUser.isTemporary) {
-                    // Always generate new OTP for temporary users
                     otp = Math.floor(100000 + Math.random() * 900000).toString();
                     expiry = new Date(Date.now() + 5 * 60 * 1000);
                     await existingUser.updateAttributes({ otp, otpExpiry: expiry });
@@ -99,7 +178,6 @@ module.exports = function (TdUser) {
                     throw error;
                 }
             } else {
-                // New temporary user
                 otp = Math.floor(100000 + Math.random() * 900000).toString();
                 expiry = new Date(Date.now() + 5 * 60 * 1000);
                 existingUser = await TdUser.create({
@@ -114,9 +192,10 @@ module.exports = function (TdUser) {
                     referrald: referralCode || null,
                     status: 'pending',
                     phoneVerified: false,
-                    userType: 'user'
+                    userType: 'user' // Default to user
                 });
                 console.log(`Created temp user with OTP for ${phone}: ${otp}, expires at ${expiry}`);
+                await ensureAndAssignRole(existingUser.id, existingUser.userType);
             }
 
             return { success: true, message: 'OTP sent successfully', otp, expiry };
@@ -149,7 +228,6 @@ module.exports = function (TdUser) {
             throw error;
         }
 
-        // Check expiry
         if (!user.otpExpiry || new Date() > new Date(user.otpExpiry)) {
             throw new Error('OTP expired. Please request a new one.');
         }
@@ -160,7 +238,6 @@ module.exports = function (TdUser) {
             throw error;
         }
 
-        // Update existing temporary user → verified
         await user.updateAttributes({
             contactName: name,
             email,
@@ -173,6 +250,7 @@ module.exports = function (TdUser) {
             otpExpiry: null
         });
 
+        await ensureAndAssignRole(user.id, user.userType || 'user');
         return user;
     };
 
@@ -189,7 +267,6 @@ module.exports = function (TdUser) {
         const { phone: rawPhone } = data;
         const phone = normalizePhoneNumber(rawPhone);
 
-        // Validation
         if (!phone) {
             const error = new Error('Phone is required');
             error.statusCode = 400;
@@ -218,15 +295,12 @@ module.exports = function (TdUser) {
             const expiry = new Date(Date.now() + 5 * 60 * 1000);
             await user.updateAttributes({ otp, otpExpiry: expiry });
 
-            // Verify the update
             const updatedUser = await TdUser.findOne({ where: { phone } });
             console.log(`Post-update check: OTP=${updatedUser.otp}, Expiry=${updatedUser.otpExpiry}`);
-
-            // Return OTP directly since SMS service is not used
             return {
                 success: true,
                 message: 'OTP generated successfully. Use the provided OTP for verification.',
-                otp, // For testing purposes; remove in production
+                otp,
                 expiry
             };
         } catch (error) {
@@ -276,12 +350,8 @@ module.exports = function (TdUser) {
             throw error;
         }
 
-        // Clear OTP
         await user.updateAttributes({ otp: null, otpExpiry: null });
-
-        // Generate access token
-        const token = await user.createAccessToken({ ttl: 1209600 }); // 14 days TTL
-
+        const token = await user.createAccessToken({ ttl: 1209600 });
         console.log(`User logged in successfully for phone ${phone}, userId: ${user.id}`);
         return { user, token };
     };
@@ -293,10 +363,9 @@ module.exports = function (TdUser) {
     });
 
     /*** Validate Token ***/
-    // In TdUser.js
     TdUser.validateToken = async function (req) {
         const tokenId = req.headers.authorization?.replace('Bearer ', '');
-        console.log('validateToken - Token ID:', tokenId); // Debug
+        // console.log('validateToken - Token ID:', tokenId);
         if (!tokenId) {
             const error = new Error('No token provided');
             error.statusCode = 401;
@@ -304,7 +373,7 @@ module.exports = function (TdUser) {
         }
         const AccessToken = loopback.getModel('AccessToken');
         const token = await AccessToken.findOne({ where: { id: tokenId } });
-        console.log('validateToken - Found token:', token); // Debug
+        // console.log('validateToken - Found token:', token);
         if (!token) {
             const error = new Error('Invalid token');
             error.statusCode = 401;
@@ -313,14 +382,14 @@ module.exports = function (TdUser) {
         const now = new Date();
         const created = new Date(token.created);
         const ttl = token.ttl * 1000;
-        console.log('validateToken - Token created:', created, 'TTL:', ttl, 'Now:', now, 'Expires:', new Date(created.getTime() + ttl)); // Debug
+        // console.log('validateToken - Token created:', created, 'TTL:', ttl, 'Now:', now, 'Expires:', new Date(created.getTime() + ttl));
         if (now > new Date(created.getTime() + ttl)) {
             const error = new Error('Token expired');
             error.statusCode = 401;
             throw error;
         }
         const user = await TdUser.findOne({ where: { id: token.userId } });
-        console.log('validateToken - Found user:', user); // Debug
+        // console.log('validateToken - Found user:', user);
         if (!user) {
             const error = new Error('User not found');
             error.statusCode = 404;
@@ -328,39 +397,6 @@ module.exports = function (TdUser) {
         }
         return { valid: true, user };
     };
-
-    TdUser.beforeRemote('prototype.updateAttributes', async function (ctx, modelInstance, next) {
-        console.log('PATCH - Full Request:', {
-            method: ctx.req.method,
-            url: ctx.req.url,
-            headers: ctx.req.headers,
-            body: ctx.args.data,
-            accessToken: ctx.req.accessToken ? { id: ctx.req.accessToken.id, userId: ctx.req.accessToken.userId } : null,
-            user: ctx.req.user,
-        });
-        try {
-            if (!ctx.req.accessToken) {
-                console.log('PATCH - No accessToken, headers:', ctx.req.headers);
-                const error = new Error('No valid access token provided');
-                error.statusCode = 401;
-                throw error;
-            }
-            // Restrict phone updates
-            const restrictedFields = ['phone'];
-            const requestedChanges = ctx.args.data;
-            for (const field of restrictedFields) {
-                if (requestedChanges[field]) {
-                    const error = new Error(`Updating ${field} requires OTP re-verification`);
-                    error.statusCode = 403;
-                    throw error;
-                }
-            }
-            handleFileUpload(ctx, next);
-        } catch (error) {
-            console.error('Error in beforeRemote:', error);
-            next(error);
-        }
-    });
 
     TdUser.remoteMethod('validateToken', {
         accepts: [{ arg: 'req', type: 'object', http: { source: 'req' } }],
@@ -385,7 +421,6 @@ module.exports = function (TdUser) {
             throw error;
         }
 
-        // Delete the token
         await AccessToken.destroyById(tokenId);
         return { success: true, message: 'Logged out successfully' };
     };
@@ -538,15 +573,14 @@ module.exports = function (TdUser) {
     /*** Register with Password (for Website) ***/
     TdUser.registerWithPassword = async function (data) {
         const { email, phone, password, contactName, city, state, country, referrald, isTermsAgreed, userType = 'user' } = data;
-        console.log('user data', data);
-        // Validation
+        // console.log('user data', data);
+
         if (!email || !phone || !password || !contactName || !isTermsAgreed) {
             const error = new Error('Email, phone, password, name, and terms agreement are required');
             error.statusCode = 400;
             throw error;
         }
 
-        // Check if user exists
         const existingUser = await TdUser.findOne({
             where: { or: [{ email }, { phone }] }
         });
@@ -557,7 +591,6 @@ module.exports = function (TdUser) {
             throw error;
         }
 
-        // Create user
         const user = await TdUser.create({
             email,
             phone,
@@ -576,6 +609,7 @@ module.exports = function (TdUser) {
             planId: 'I'
         });
 
+        await ensureAndAssignRole(user.id, userType);
         return user;
     };
 
@@ -588,7 +622,7 @@ module.exports = function (TdUser) {
     /*** Login with Password (for Website) ***/
     TdUser.loginWithPassword = async function (credentials) {
         const { email, password } = credentials;
-        console.log('loginWithPassword - Credentials:', { email, password }); // Debug
+        // console.log('loginWithPassword - Credentials:', { email, password });
         if (!email || !password) {
             const error = new Error('Email and password are required');
             error.statusCode = 400;
@@ -597,23 +631,23 @@ module.exports = function (TdUser) {
         const user = await TdUser.findOne({
             where: { or: [{ email }, { username: email }] }
         });
-        console.log('loginWithPassword - Found user:', user ? user.id : null); // Debug
+        // console.log('loginWithPassword - Found user:', user ? user.id : null);
         if (!user) {
-            console.log('loginWithPassword - User not found:', email);
+            // console.log('loginWithPassword - User not found:', email);
             const error = new Error('Invalid credentials');
             error.statusCode = 401;
             throw error;
         }
         const isPasswordValid = await user.hasPassword(password);
-        console.log('loginWithPassword - Password valid:', isPasswordValid); // Debug
+        // console.log('loginWithPassword - Password valid:', isPasswordValid);
         if (!isPasswordValid) {
-            console.log('loginWithPassword - Invalid password for:', email);
+            // console.log('loginWithPassword - Invalid password for:', email);
             const error = new Error('Invalid credentials');
             error.statusCode = 401;
             throw error;
         }
         if (user.status !== 'active') {
-            console.log('loginWithPassword - Account not active:', email);
+            // console.log('loginWithPassword - Account not active:', email);
             const error = new Error('Account is not active');
             error.statusCode = 403;
             throw error;
@@ -622,9 +656,9 @@ module.exports = function (TdUser) {
             { id: user.id },
             { lastLogin: new Date() }
         );
-        console.log('loginWithPassword - Creating token for:', email); // Debug
+        // console.log('loginWithPassword - Creating token for:', email);
         const token = await user.createAccessToken({ ttl: 1209600 });
-        console.log('loginWithPassword - Token created:', token.id); // Debug
+        // console.log('loginWithPassword - Token created:', token.id);
         return { user, token };
     };
 
@@ -636,32 +670,67 @@ module.exports = function (TdUser) {
 
     TdUser.upload = async function (ctx) {
         try {
-            if (!ctx.req.files || !ctx.req.files.profileImage) {
-                const error = new Error('No file provided');
+            console.log('TdUser.upload - Request files:', ctx.req.files);
+            console.log('TdUser.upload - Request body:', ctx.req.body);
+            if (!ctx.req.files || !ctx.req.files.profileImage || !ctx.req.files.profileImage[0]) {
+                const error = new Error('No file provided or invalid file field');
                 error.statusCode = 400;
                 throw error;
             }
             const file = ctx.req.files.profileImage[0];
-            const subDir = ctx.args.data?.fileType || 'profiles';
+            const subDir = ctx.req.body.fileType || 'profiles';
             const sanitizedSubDir = subDir.replace(/[^a-zA-Z0-9_-]/g, '');
             const uploadDir = path.join(__dirname, '../../Uploads', sanitizedSubDir);
-            await fs.promises.mkdir(uploadDir, { recursive: true });
+            console.log('TdUser.upload - Creating directory:', uploadDir);
+            await fs.mkdir(uploadDir, { recursive: true });
             const fileName = `${Date.now()}_${file.originalname}`;
             const filePath = path.join(uploadDir, fileName);
-            await fs.promises.writeFile(filePath, file.buffer);
+            console.log('TdUser.upload - Writing file to:', filePath);
+            await fs.writeFile(filePath, file.buffer);
             const url = `/Uploads/${sanitizedSubDir}/${fileName}`;
+            console.log('TdUser.upload - File uploaded successfully, URL:', url);
             return { url };
         } catch (error) {
-            console.error('Error in upload:', error);
+            console.error('TdUser.upload - Error:', error);
+            error.statusCode = error.statusCode || 500;
             throw error;
         }
     };
 
     TdUser.remoteMethod('upload', {
-        accepts: [
-            { arg: 'ctx', type: 'object', http: { source: 'context' } }
-        ],
+        accepts: [{ arg: 'ctx', type: 'object', http: { source: 'context' } }],
         returns: { arg: 'result', type: 'object', root: true },
         http: { path: '/upload', verb: 'post' },
+    });
+
+    /*** Debug Token ***/
+    TdUser.debugToken = async function (tokenId) {
+        const AccessToken = loopback.getModel('AccessToken');
+        const token = await AccessToken.findOne({ where: { id: tokenId } });
+        if (!token) {
+            const error = new Error('Token not found');
+            error.statusCode = 404;
+            throw error;
+        }
+        const user = await TdUser.findById(token.userId);
+        if (!user) {
+            const error = new Error('User not found for token');
+            error.statusCode = 404;
+            throw error;
+        }
+        const now = new Date();
+        const created = new Date(token.created);
+        const ttl = token.ttl * 1000;
+        const isExpired = now > new Date(created.getTime() + ttl);
+        return {
+            token: { id: token.id, userId: token.userId, created: token.created, ttl: token.ttl, expired: isExpired },
+            user: { id: user.id, email: user.email, userType: user.userType }
+        };
+    };
+
+    TdUser.remoteMethod('debugToken', {
+        accepts: [{ arg: 'tokenId', type: 'string', required: true }],
+        returns: { arg: 'result', type: 'object', root: true },
+        http: { path: '/debugToken', verb: 'get' }
     });
 };

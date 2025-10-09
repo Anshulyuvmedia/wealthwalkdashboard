@@ -148,7 +148,7 @@ const EditPlan: React.FC = () => {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="pricing" className="text-sm font-medium">Price ($)</Label>
+                                <Label htmlFor="pricing" className="text-sm font-medium">Price (₹)</Label>
                                 <Input
                                     id="pricing"
                                     type="number"

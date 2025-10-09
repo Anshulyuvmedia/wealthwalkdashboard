@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { UserPlus } from "lucide-react";
 import { DataTable } from "./DataTable";
-import { apiService } from "./apiService";
+import apiService  from './apiService';
 import type { TdUser } from "./interfaces";
 import { columns } from "./columns";
 import { useNavigate } from "react-router-dom";

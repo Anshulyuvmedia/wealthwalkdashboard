@@ -15,7 +15,7 @@ export interface TdUser {
     country?: string;
     referrald?: string;
     planId?: string;
-    expiryDate?: string; // Fixed typo
+    expiryDate?: string;
     endDate?: string;
     profileImage?: string;
     files?: Array<{ path: string; type: string; uploadedAt: string }>;
@@ -42,8 +42,9 @@ export interface UserFormData {
     country?: string;
     referrald?: string;
     planId?: string;
-    expiryDate?: string; // Fixed typo
+    expiryDate?: string;
     endDate?: string;
     profileImageFile?: File;
+    profileImage?: string;
     fileType?: string;
 }

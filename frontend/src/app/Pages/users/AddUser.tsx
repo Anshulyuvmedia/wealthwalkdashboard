@@ -8,14 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { apiService } from "@/app/Pages/users/apiService";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import apiService from "@/app/Pages/users/apiService";
 import type { UserFormData } from "@/app/Pages/users/interfaces";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -26,7 +20,7 @@ export default function AddUser() {
         userType: "user",
         status: "active",
         country: "IN",
-        planId: "I",
+        planId: "basicplan",
         isTermsAgreed: true,
         phoneVerified: false,
         twoFaEnabled: false,
@@ -42,10 +36,10 @@ export default function AddUser() {
         }));
     };
 
-    const handleSwitchChange = (name: string, checked: boolean) => {
+    const handleSwitchChange = (name: string, value: boolean | string) => {
         setFormData(prev => ({
             ...prev,
-            [name]: checked
+            [name]: value
         }));
     };
 
@@ -77,8 +71,8 @@ export default function AddUser() {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (!formData.contactName || !formData.email || !formData.phone || !formData.password || !formData.isTermsAgreed) {
-            toast.error("Please fill in all required fields: Name, Email, Phone, Password, and Terms Agreement");
+        if (!formData.contactName || !formData.email || !formData.phone || !formData.password) {
+            toast.error("Please fill in all required fields: Name, Email, Phone, Password");
             return;
         }
         try {
@@ -106,7 +100,7 @@ export default function AddUser() {
                 <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                     <h1 className="text-3xl font-bold">Add New User</h1>
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                             <div>
                                 <Label htmlFor="contactName">Full Name *</Label>
                                 <Input
@@ -172,12 +166,12 @@ export default function AddUser() {
                                         <SelectValue placeholder="Select user type" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="user">User</SelectItem>
                                         <SelectItem value="admin">Admin</SelectItem>
+                                        <SelectItem value="user">User</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="md:col-span-3">
+                            <div>
                                 <Label>Status *</Label>
                                 <div className="mt-1 flex items-center gap-2">
                                     <Switch
@@ -201,18 +195,7 @@ export default function AddUser() {
                                     <span>{formData.phoneVerified ? "Verified" : "Not Verified"}</span>
                                 </div>
                             </div>
-                            <div>
-                                <Label>Terms Agreed *</Label>
-                                <div className="mt-1 flex items-center gap-2">
-                                    <Switch
-                                        id="isTermsAgreed"
-                                        checked={formData.isTermsAgreed || false}
-                                        onCheckedChange={(checked) => handleSwitchChange("isTermsAgreed", checked)}
-                                        required
-                                    />
-                                    <span>{formData.isTermsAgreed ? "Agreed" : "Not Agreed"}</span>
-                                </div>
-                            </div>
+
                             <div>
                                 <Label>2FA Enabled</Label>
                                 <div className="mt-1 flex items-center gap-2">
@@ -281,58 +264,26 @@ export default function AddUser() {
                             </div>
                             <div>
                                 <Label htmlFor="planId">Plan ID (Optional)</Label>
-                                <Input
-                                    id="planId"
-                                    name="planId"
-                                    value={formData.planId || "I"}
-                                    onChange={handleInputChange}
-                                    placeholder="Enter plan ID"
-                                    className="mt-1"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="expairyDate">Expiry Date (Optional)</Label>
-                                <Input
-                                    id="expairyDate"
-                                    name="expairyDate"
-                                    type="date"
-                                    value={formData.expairyDate || ""}
-                                    onChange={handleInputChange}
-                                    className="mt-1"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="endDate">End Date (Optional)</Label>
-                                <Input
-                                    id="endDate"
-                                    name="endDate"
-                                    type="date"
-                                    value={formData.endDate || ""}
-                                    onChange={handleInputChange}
-                                    className="mt-1"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="fileType">File Type *</Label>
                                 <Select
-                                    name="fileType"
-                                    value={formData.fileType || "profiles"}
+                                    name="planId"
+                                    value={formData.planId || "basicplan"}
                                     onValueChange={(value) =>
-                                        handleInputChange({ target: { name: 'fileType', value } } as any)
+                                        handleInputChange({ target: { name: 'planId', value } } as any)
                                     }
                                     required
                                 >
                                     <SelectTrigger className="mt-1">
-                                        <SelectValue placeholder="Select file type" />
+                                        <SelectValue placeholder="Select plan ID" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="profiles">Profile Image</SelectItem>
-                                        <SelectItem value="documents">Document</SelectItem>
-                                        <SelectItem value="avatars">Avatar</SelectItem>
+                                        <SelectItem value="basicplan">Basic Plan</SelectItem>
+                                        <SelectItem value="proplan">Pro Plan</SelectItem>
+                                        <SelectItem value="enterpriceplan">Enterprice Plan</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="md:col-span-3">
+
+                            <div >
                                 <Label htmlFor="profileImageFile">Image Upload (Optional)</Label>
                                 <Input
                                     id="profileImageFile"
@@ -359,7 +310,7 @@ export default function AddUser() {
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit" className="bg-indigo-600 text-white hover:bg-indigo-700">
+                            <Button type="submit" className="bg-green-600 text-white hover:bg-green-700">
                                 Create User
                             </Button>
                         </div>

@@ -6,14 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { apiService } from "@/app/Pages/users/apiService";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import apiService from "@/app/Pages/users/apiService";
 import type { TdUser, UserFormData } from "@/app/Pages/users/interfaces";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -55,7 +49,6 @@ export default function EditUser() {
                     setFormData({
                         ...user,
                         password: "",
-                        fileType: "profiles",
                     });
                     setProfileImagePreview(user.profileImage || null);
                 } else {
@@ -81,7 +74,7 @@ export default function EditUser() {
         }));
     };
 
-    const handleSwitchChange = (name: string, checked: boolean) => {
+    const handleSwitchChange = (name: string, checked: boolean | string) => {
         setFormData(prev => ({
             ...prev,
             [name]: checked
@@ -95,8 +88,8 @@ export default function EditUser() {
                 toast.error("File size exceeds 5MB limit");
                 return;
             }
-            if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
-                toast.error("Only JPEG, PNG, and GIF files are allowed");
+            if (!['image/jpeg', 'image/png'].includes(file.type)) {
+                toast.error("Only JPEG and PNG files are allowed");
                 return;
             }
             const reader = new FileReader();
@@ -106,11 +99,12 @@ export default function EditUser() {
             reader.readAsDataURL(file);
             setFormData(prev => ({
                 ...prev,
-                profileImageFile: file
+                profileImageFile: file,
+                fileType: 'profiles' // Ensure fileType is set
             }));
         } else {
-            setProfileImagePreview(formData.profileImage || null);
-            setFormData(prev => ({ ...prev, profileImageFile: undefined }));
+            setProfileImagePreview(null);
+            setFormData(prev => ({ ...prev, profileImageFile: undefined, fileType: 'profiles' }));
         }
     };
 
@@ -124,8 +118,8 @@ export default function EditUser() {
             toast.error("Only admins can edit users");
             return;
         }
-        if (!formData.contactName || !formData.email || !formData.phone || !formData.isTermsAgreed) {
-            toast.error("Please fill in all required fields: Name, Email, Phone, and Terms Agreement");
+        if (!formData.contactName || !formData.email || !formData.phone) {
+            toast.error("Please fill in all required fields: Name, Email, Phone");
             return;
         }
         try {
@@ -136,6 +130,8 @@ export default function EditUser() {
             if (!dataToSend.profileImageFile && profileImagePreview) {
                 dataToSend.profileImage = profileImagePreview;
             }
+
+            // console.log('dataToSend', dataToSend);
             await apiService.updateUser(id, dataToSend);
             toast.success("User updated successfully!");
             navigate("/users");
@@ -164,7 +160,7 @@ export default function EditUser() {
                 <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                     <h1 className="text-3xl font-bold">Edit User</h1>
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                             <div>
                                 <Label htmlFor="contactName">Full Name *</Label>
                                 <Input
@@ -229,12 +225,12 @@ export default function EditUser() {
                                         <SelectValue placeholder="Select user type" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="user">User</SelectItem>
                                         <SelectItem value="admin">Admin</SelectItem>
+                                        <SelectItem value="user">User</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="md:col-span-3">
+                            <div>
                                 <Label>Status *</Label>
                                 <div className="mt-1 flex items-center gap-2">
                                     <Switch
@@ -256,18 +252,6 @@ export default function EditUser() {
                                         onCheckedChange={(checked) => handleSwitchChange("phoneVerified", checked)}
                                     />
                                     <span>{formData.phoneVerified ? "Verified" : "Not Verified"}</span>
-                                </div>
-                            </div>
-                            <div>
-                                <Label>Terms Agreed *</Label>
-                                <div className="mt-1 flex items-center gap-2">
-                                    <Switch
-                                        id="isTermsAgreed"
-                                        checked={formData.isTermsAgreed || false}
-                                        onCheckedChange={(checked) => handleSwitchChange("isTermsAgreed", checked)}
-                                        required
-                                    />
-                                    <span>{formData.isTermsAgreed ? "Agreed" : "Not Agreed"}</span>
                                 </div>
                             </div>
                             <div>
@@ -326,70 +310,27 @@ export default function EditUser() {
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="username">Username (Optional)</Label>
-                                <Input
-                                    id="username"
-                                    name="username"
-                                    value={formData.username || ""}
-                                    onChange={handleInputChange}
-                                    placeholder="Enter username"
-                                    className="mt-1"
-                                />
-                            </div>
-                            <div>
                                 <Label htmlFor="planId">Plan ID (Optional)</Label>
-                                <Input
-                                    id="planId"
-                                    name="planId"
-                                    value={formData.planId || "Basic"}
-                                    onChange={handleInputChange}
-                                    placeholder="Enter plan ID"
-                                    className="mt-1"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="expiryDate">Expiry Date (Optional)</Label>
-                                <Input
-                                    id="expiryDate"
-                                    name="expiryDate"
-                                    type="date"
-                                    value={formData.expiryDate || ""}
-                                    onChange={handleInputChange}
-                                    className="mt-1"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="endDate">End Date (Optional)</Label>
-                                <Input
-                                    id="endDate"
-                                    name="endDate"
-                                    type="date"
-                                    value={formData.endDate || ""}
-                                    onChange={handleInputChange}
-                                    className="mt-1"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="fileType">File Type *</Label>
                                 <Select
-                                    name="fileType"
-                                    value={formData.fileType || "profiles"}
+                                    name="planId"
+                                    value={formData.planId || "basicplan"}
                                     onValueChange={(value) =>
-                                        handleInputChange({ target: { name: 'fileType', value } } as any)
+                                        handleInputChange({ target: { name: 'planId', value } } as any)
                                     }
                                     required
                                 >
                                     <SelectTrigger className="mt-1">
-                                        <SelectValue placeholder="Select file type" />
+                                        <SelectValue placeholder="Select plan ID" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="profiles">Profile Image</SelectItem>
-                                        <SelectItem value="documents">Document</SelectItem>
-                                        <SelectItem value="avatars">Avatar</SelectItem>
+                                        <SelectItem value="basicplan">Basic Plan</SelectItem>
+                                        <SelectItem value="proplan">Pro Plan</SelectItem>
+                                        <SelectItem value="enterpriceplan">Enterprice Plan</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="md:col-span-3">
+
+                            <div>
                                 <Label htmlFor="profileImageFile">Image Upload (Optional)</Label>
                                 <Input
                                     id="profileImageFile"

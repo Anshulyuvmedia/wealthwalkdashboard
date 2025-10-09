@@ -55,7 +55,7 @@ export default function LoginForm({
     setLoading(true);
 
     try {
-      console.log('Email Login Form Data:', { email, password });
+      // console.log('Email Login Form Data:', { email, password });
 
       const loginResponse: AxiosResponse<{ user: AdminUser; token: { id: string; userId: string; ttl: number; created: string } }> =
         await axios.post(`${API_BASE_URL}/TdUsers/loginWithPassword`, {
@@ -69,8 +69,8 @@ export default function LoginForm({
 
       if (loginResponse.status === 200) {
         const { user, token } = loginResponse.data;
-        console.log('Email Login Response:', JSON.stringify(loginResponse.data, null, 2));
-        console.log('User Data:', JSON.stringify(user, null, 2));
+        // console.log('Email Login Response:', JSON.stringify(loginResponse.data, null, 2));
+        // console.log('User Data:', JSON.stringify(user, null, 2));
 
         localStorage.setItem("adminToken", JSON.stringify(token));
         localStorage.setItem("admin", JSON.stringify(user));
@@ -118,7 +118,7 @@ export default function LoginForm({
     setLoading(true);
 
     try {
-      console.log('Generate OTP Form Data:', { phone });
+      // console.log('Generate OTP Form Data:', { phone });
 
       const response: AxiosResponse<{ success: boolean; message: string; otp: string; expiry: string }> =
         await axios.post(`${API_BASE_URL}/TdUsers/loginGenerateOtp`, {
@@ -129,7 +129,7 @@ export default function LoginForm({
           },
         });
 
-      console.log('Generate OTP Response:', JSON.stringify(response.data, null, 2));
+      // console.log('Generate OTP Response:', JSON.stringify(response.data, null, 2));
 
       if (response.status === 200 && response.data.success) {
         setIsOtpSent(true);
@@ -172,7 +172,7 @@ export default function LoginForm({
     setLoading(true);
 
     try {
-      console.log('Verify OTP Form Data:', { phone, otp });
+      // console.log('Verify OTP Form Data:', { phone, otp });
 
       const response: AxiosResponse<{ user: AdminUser; token: { id: string; userId: string; ttl: number; created: string } }> =
         await axios.post(`${API_BASE_URL}/TdUsers/loginVerifyOtp`, {
@@ -184,7 +184,7 @@ export default function LoginForm({
           },
         });
 
-      console.log('Verify OTP Response:', JSON.stringify(response.data, null, 2));
+      // console.log('Verify OTP Response:', JSON.stringify(response.data, null, 2));
 
       if (response.status === 200 && response.data.user && response.data.token) {
         const { user, token } = response.data;
