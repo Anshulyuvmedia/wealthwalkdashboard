@@ -7,10 +7,13 @@ const fs = require('fs');
 
 module.exports = function (TdUser) {
     const smsService = app.dataSources.smsService;
-    // Disable phone updates
-    TdUser.validatesFormatOf('phone', { with: /^$/ });
-    TdUser.validatesLengthOf('phone', { is: 0 });
 
+    // Add proper phone format validation (overrides any conflicting ones)
+    TdUser.validatesFormatOf('phone', {
+        with: /^\d{10,15}$/,
+        message: 'Invalid phone number. Must be 10-15 digits.',
+        allowNull: true  // Allows null/undefined during partial updates if not set
+    });
     // Helper function to ensure roles exist and assign role based on userType
     async function ensureAndAssignRole(userId, userType) {
         try {
@@ -170,7 +173,10 @@ module.exports = function (TdUser) {
                 if (existingUser.isTemporary) {
                     otp = Math.floor(100000 + Math.random() * 900000).toString();
                     expiry = new Date(Date.now() + 5 * 60 * 1000);
-                    await existingUser.updateAttributes({ otp, otpExpiry: expiry });
+                    // Use save with validate: false to skip full model validation
+                    existingUser.otp = otp;
+                    existingUser.otpExpiry = expiry;
+                    await existingUser.save({ validate: false });
                     console.log(`Generated new OTP for ${phone}: ${otp}, expires at ${expiry}`);
                 } else {
                     const error = new Error('Email or phone already registered');
@@ -238,17 +244,17 @@ module.exports = function (TdUser) {
             throw error;
         }
 
-        await user.updateAttributes({
-            contactName: name,
-            email,
-            referrald: referralCode || null,
-            phoneVerified: true,
-            isTemporary: false,
-            status: 'active',
-            password: Math.random().toString(36).slice(-8),
-            otp: null,
-            otpExpiry: null
-        });
+        // Use save with validate: false
+        user.contactName = name;
+        user.email = email;
+        user.referrald = referralCode || null;
+        user.phoneVerified = true;
+        user.isTemporary = false;
+        user.status = 'active';
+        user.password = Math.random().toString(36).slice(-8);
+        user.otp = null;
+        user.otpExpiry = null;
+        await user.save({ validate: false });
 
         await ensureAndAssignRole(user.id, user.userType || 'user');
         return user;
@@ -282,7 +288,7 @@ module.exports = function (TdUser) {
 
         try {
             const user = await TdUser.findOne({
-                where: { or: [{ phone }], isTemporary: false }
+                where: { phone, isTemporary: false }
             });
 
             if (!user) {
@@ -293,7 +299,10 @@ module.exports = function (TdUser) {
 
             const otp = Math.floor(100000 + Math.random() * 900000).toString();
             const expiry = new Date(Date.now() + 5 * 60 * 1000);
-            await user.updateAttributes({ otp, otpExpiry: expiry });
+            // Use save with validate: false
+            user.otp = otp;
+            user.otpExpiry = expiry;
+            await user.save({ validate: false });
 
             const updatedUser = await TdUser.findOne({ where: { phone } });
             console.log(`Post-update check: OTP=${updatedUser.otp}, Expiry=${updatedUser.otpExpiry}`);
@@ -350,7 +359,10 @@ module.exports = function (TdUser) {
             throw error;
         }
 
-        await user.updateAttributes({ otp: null, otpExpiry: null });
+        // Use save with validate: false
+        user.otp = null;
+        user.otpExpiry = null;
+        await user.save({ validate: false });
         const token = await user.createAccessToken({ ttl: 1209600 });
         console.log(`User logged in successfully for phone ${phone}, userId: ${user.id}`);
         return { user, token };

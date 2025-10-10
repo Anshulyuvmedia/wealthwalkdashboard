@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { toast } from 'sonner';
-import type { TdUser, UserFormData } from './interfaces';
+import type { UserFormData } from './interfaces';
 
 const apiClient = axios.create({
     baseURL: 'http://localhost:3000/api',
@@ -102,22 +102,28 @@ const apiService = {
                 for (const pair of formData.entries()) {
                     console.log(`${pair[0]}: ${pair[1]}`);
                 }
-                const uploadResponse = await apiClient.post('/TdUsers/upload', formData, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        // Let Axios set the Content-Type with the correct boundary
-                    },
-                });
-                console.log('updateUser - Upload response:', uploadResponse.data);
-                profileImageUrl = uploadResponse.data.url;
-                if (!profileImageUrl) {
-                    throw new Error('Upload endpoint did not return a valid URL');
+                try {
+                    const uploadResponse = await apiClient.post('/TdUsers/upload', formData, {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            // No Content-Type; let browser set it with boundary
+                        },
+                    });
+                    console.log('updateUser - Upload response:', uploadResponse.data);
+                    profileImageUrl = uploadResponse.data.url;
+                    if (!profileImageUrl) {
+                        throw new Error('Upload endpoint did not return a valid URL');
+                    }
+                    console.log('updateUser - Uploaded image URL:', profileImageUrl);
+                } catch (uploadError: any) {
+                    console.error('updateUser - Upload failed:', uploadError.response?.data || uploadError);
+                    toast.error(uploadError.response?.data?.error?.message || 'File upload failed');
+                    throw uploadError; // Bubble up to stop the patch
                 }
-                console.log('updateUser - Uploaded image URL:', profileImageUrl);
             }
             const dataToSend = { ...data, profileImage: profileImageUrl };
             delete dataToSend.profileImageFile;
-            delete dataToSend.phone; // Avoid phone updates to bypass restriction
+            delete dataToSend.phone; // Avoid phone updates
             if (!dataToSend.password) {
                 delete dataToSend.password;
             }
@@ -190,6 +196,27 @@ const apiService = {
                 window.location.href = '/login';
             } else {
                 toast.error(error.response?.data?.error?.message || 'Failed to change user status');
+            }
+            throw error;
+        }
+    },
+
+    deleteUser: async (id: string): Promise<void> => {
+        try {
+            const token = await getValidToken();
+            await apiClient.delete(`/TdUsers/${id}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            toast.success('User deleted successfully!');
+        } catch (error: any) {
+            console.error(`Failed to delete user ${id}:`, error.response?.data || error);
+            if (error.message === 'No valid token found. Please log in.') {
+                toast.error('Session expired. Please log in again.');
+                window.location.href = '/login';
+            } else {
+                toast.error(error.response?.data?.error?.message || 'Failed to delete user');
             }
             throw error;
         }

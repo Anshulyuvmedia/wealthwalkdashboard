@@ -11,11 +11,12 @@ require('dotenv').config();
 const app = (module.exports = loopback());
 app.enable('trust proxy');
 
-// Configure CORS
+// Configure CORS - Allow all origins for mobile and web access
 app.use(require('cors')({
-  origin: 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PATCH'],
+  origin: '*',  // Allows requests from mobile (e.g., http://192.168.1.17) and localhost
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
 
 // Configure multer for file uploads
@@ -41,7 +42,7 @@ const upload = multer({
   },
 }).fields([{ name: 'profileImage', maxCount: 1 }]);
 
-// Apply multer middleware for /api/TdUsers/upload before token middleware
+// In the multer config for /api/TdUsers/upload:
 app.use('/api/TdUsers/upload', (req, res, next) => {
   console.log('Middleware - /api/TdUsers/upload headers:', req.headers);
   console.log('Middleware - /api/TdUsers/upload content-type:', req.get('content-type'));
@@ -57,7 +58,7 @@ app.use('/api/TdUsers/upload', (req, res, next) => {
       console.error('Multer - File upload error:', err);
       return res.status(400).json({ error: { message: err.message } });
     }
-    console.log('Multer - Files:', req.files);
+    console.log('Multer - Files processed successfully:', req.files); // Improved log
     console.log('Multer - Body:', req.body);
     next();
   });

@@ -66,7 +66,7 @@ export default function Users() {
                         <h1 className="text-3xl font-bold">Users Management</h1>
                         <Button
                             size="sm"
-                            className="flex items-center gap-2"
+                            className="flex items-center gap-2 bg-green-600 text-white"
                             onClick={() => navigate("/users/add")}
                         >
                             <UserPlus className="h-4 w-4" />
