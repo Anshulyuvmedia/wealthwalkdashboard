@@ -8,9 +8,9 @@ module.exports = function (app) {
     // Resolver for $authenticated role
     Role.registerResolver('$authenticated', function (role, context, cb) {
         const userId = context.accessToken?.userId;
-        // console.log('Role resolver - $authenticated:', { userId, accessToken: context.accessToken });
+        console.log('Role resolver - $authenticated: userId=', userId, 'method=', context.methodString);
         if (!userId) {
-            // console.log('Role resolver - $authenticated: No userId, denying access');
+            console.log('Role resolver - $authenticated: No userId, denying access');
             return process.nextTick(() => cb(null, false));
         }
         TdUser.findById(userId, (err, user) => {
@@ -18,17 +18,23 @@ module.exports = function (app) {
                 console.error('Role resolver - $authenticated: Error or no user:', err, user);
                 return cb(err || new Error('User not found'));
             }
-            // console.log('Role resolver - $authenticated: User found:', user.id, user.userType);
+            console.log('Role resolver - $authenticated: User found:', user.id, user.userType);
             return cb(null, true);
         });
     });
 
     // Resolver for admin role
     Role.registerResolver('admin', function (role, context, cb) {
+        // Bypass for subscribeToPlan since it only requires $authenticated
+        if (context.methodString === 'TdUser.subscribeToPlan') {
+            console.log('Role resolver - admin: Bypassing for subscribeToPlan, userId=', context.accessToken?.userId);
+            return process.nextTick(() => cb(null, true));
+        }
+
         const userId = context.accessToken?.userId;
-        // console.log('Role resolver - admin:', { userId, accessToken: context.accessToken });
+        console.log('Role resolver - admin: userId=', userId, 'method=', context.methodString);
         if (!userId) {
-            // console.log('Role resolver - admin: No userId, denying access');
+            console.log('Role resolver - admin: No userId, denying access');
             return process.nextTick(() => cb(null, false));
         }
         RoleMapping.findOne({
@@ -43,7 +49,7 @@ module.exports = function (app) {
                     console.error('Role resolver - admin: Error or no role:', err, role);
                     return cb(err || new Error('Role not found'));
                 }
-                // console.log('Role resolver - admin: Role found:', role.name);
+                console.log('Role resolver - admin: Role found:', role.name);
                 return cb(null, role.name === 'admin');
             });
         });
@@ -51,10 +57,16 @@ module.exports = function (app) {
 
     // Resolver for user role
     Role.registerResolver('user', function (role, context, cb) {
+        // Bypass for subscribeToPlan since it only requires $authenticated
+        if (context.methodString === 'TdUser.subscribeToPlan') {
+            console.log('Role resolver - user: Bypassing for subscribeToPlan, userId=', context.accessToken?.userId);
+            return process.nextTick(() => cb(null, true));
+        }
+
         const userId = context.accessToken?.userId;
-        // console.log('Role resolver - user:', { userId, accessToken: context.accessToken });
+        console.log('Role resolver - user: userId=', userId, 'method=', context.methodString);
         if (!userId) {
-            // console.log('Role resolver - user: No userId, denying access');
+            console.log('Role resolver - user: No userId, denying access');
             return process.nextTick(() => cb(null, false));
         }
         RoleMapping.findOne({
@@ -69,7 +81,7 @@ module.exports = function (app) {
                     console.error('Role resolver - user: Error or no role:', err, role);
                     return cb(err || new Error('Role not found'));
                 }
-                // console.log('Role resolver - user: Role found:', role.name);
+                console.log('Role resolver - user: Role found:', role.name);
                 return cb(null, role.name === 'user');
             });
         });

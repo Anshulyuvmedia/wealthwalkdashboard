@@ -8,12 +8,13 @@ const fs = require('fs');
 module.exports = function (TdUser) {
     const smsService = app.dataSources.smsService;
 
-    // Add proper phone format validation (overrides any conflicting ones)
+    // Phone validation
     TdUser.validatesFormatOf('phone', {
         with: /^\d{10,15}$/,
         message: 'Invalid phone number. Must be 10-15 digits.',
-        allowNull: true  // Allows null/undefined during partial updates if not set
+        allowNull: true
     });
+
     // Helper function to ensure roles exist and assign role based on userType
     async function ensureAndAssignRole(userId, userType) {
         try {
@@ -27,86 +28,38 @@ module.exports = function (TdUser) {
                 console.log(`Created ${roleName} role: ${role.id}`);
             }
 
-            await RoleMapping.destroyAll({ principalId: userId, principalType: 'USER' });
-            console.log(`Cleared existing role mappings for user ${userId}`);
-
-            await RoleMapping.create({
-                principalType: 'USER',
-                principalId: userId,
-                roleId: role.id
+            // Check if role mapping already exists
+            const existingMapping = await RoleMapping.findOne({
+                where: { principalId: userId, principalType: 'USER' }
             });
-            console.log(`Assigned ${roleName} role to user ${userId} based on userType: ${userType}`);
+            if (!existingMapping) {
+                await RoleMapping.create({
+                    principalType: 'USER',
+                    principalId: userId,
+                    roleId: role.id
+                });
+                console.log(`Assigned ${roleName} role to user ${userId} based on userType: ${userType}`);
+            } else {
+                console.log(`Role mapping already exists for user ${userId}: ${roleName}, roleId: ${existingMapping.roleId}`);
+            }
+            return role;
         } catch (error) {
             console.error(`Error assigning ${userType} role to user ${userId}:`, error);
             throw error;
         }
     }
 
-    // File upload handling
-    function handleFileUpload(ctx, next) {
-        // console.log('handleFileUpload - Files:', ctx.req.files, 'Body:', ctx.args.data);
-        next();
-    }
-
-    TdUser.beforeRemote('create', function (ctx, unused, next) {
-        handleFileUpload(ctx, next);
-    });
-
-    TdUser.beforeRemote('prototype.updateAttributes', async function (ctx, modelInstance, next) {
-        try {
-            if (!ctx.req.accessToken || !ctx.req.accessToken.userId) {
-                console.log('PATCH - Invalid accessToken:', ctx.req.accessToken);
-                const error = new Error('No valid access token provided');
-                error.statusCode = 401;
-                throw error;
-            }
-            const userId = ctx.req.accessToken.userId;
-            const targetUserId = ctx.args.id;
-            console.log(`PATCH - Authenticated userId: ${userId}, Target userId: ${targetUserId}`);
-
-            const roleMapping = await app.models.RoleMapping.findOne({
-                where: { principalId: userId, principalType: 'USER' }
-            });
-            if (!roleMapping) {
-                console.log(`PATCH - No role assigned to user ${userId}`);
-                const error = new Error('User has no role assigned');
-                error.statusCode = 403;
-                throw error;
-            }
-            const role = await app.models.Role.findById(roleMapping.roleId);
-            console.log(`PATCH - User ${userId} role: ${role.name}`);
-            if (role.name !== 'admin' && userId !== targetUserId) {
-                console.log(`PATCH - User ${userId} (role: ${role.name}) attempted to update user ${targetUserId}`);
-                const error = new Error('Only admins can update other users');
-                error.statusCode = 403;
-                throw error;
-            }
-
-            // Restrict phone and password updates
-            const restrictedFields = ['phone', 'password'];
-            const requestedChanges = ctx.args.data;
-            for (const field of restrictedFields) {
-                if (requestedChanges[field]) {
-                    console.log(`PATCH - Attempt to update restricted field: ${field}`);
-                    const error = new Error(`Updating ${field} is not allowed in this request`);
-                    error.statusCode = 403;
-                    throw error;
-                }
-            }
-
-            // Handle userType change
-            if (requestedChanges.userType) {
-                console.log(`PATCH - Updating userType to: ${requestedChanges.userType}`);
-                await ensureAndAssignRole(targetUserId, requestedChanges.userType);
-            }
-
-            next();
-        } catch (error) {
-            console.error('PATCH - Error in beforeRemote:', error);
-            next(error);
+    // Ensure role assignment during user creation
+    TdUser.observe('after save', async function (ctx) {
+        if (ctx.instance && ctx.isNewInstance) {
+            const userId = ctx.instance.id;
+            const userType = ctx.instance.userType || 'user';
+            console.log(`after save - Assigning role for new user ${userId}, userType: ${userType}`);
+            await ensureAndAssignRole(userId, userType);
         }
     });
 
+    // File upload handling
     function handleFileUpload(ctx, next) {
         try {
             console.log('handleFileUpload ctx.args.data:', ctx.args.data);
@@ -138,6 +91,168 @@ module.exports = function (TdUser) {
         }
     }
 
+    TdUser.beforeRemote('create', function (ctx, unused, next) {
+        handleFileUpload(ctx, next);
+    });
+
+    TdUser.beforeRemote('prototype.updateAttributes', async function (ctx, modelInstance, next) {
+        try {
+            if (!ctx.req.accessToken || !ctx.req.accessToken.userId) {
+                console.log('PATCH - Invalid accessToken:', ctx.req.accessToken);
+                const error = new Error('No valid access token provided');
+                error.statusCode = 401;
+                throw error;
+            }
+            const userId = ctx.req.accessToken.userId;
+            const targetUserId = ctx.args.id;
+            console.log(`PATCH - Authenticated userId: ${userId}, Target userId: ${targetUserId}`);
+
+            const roleMapping = await app.models.RoleMapping.findOne({
+                where: { principalId: userId, principalType: 'USER' }
+            });
+            if (!roleMapping) {
+                console.log(`PATCH - No role assigned to user ${userId}, assigning default 'user' role`);
+                await ensureAndAssignRole(userId, 'user');
+            }
+
+            const role = await app.models.Role.findById(roleMapping?.roleId);
+            console.log(`PATCH - User ${userId} role: ${role?.name || 'user'}`);
+            if (role?.name !== 'admin' && userId !== targetUserId) {
+                console.log(`PATCH - User ${userId} (role: ${role?.name || 'user'}) attempted to update user ${targetUserId}`);
+                const error = new Error('Only admins can update other users');
+                error.statusCode = 403;
+                throw error;
+            }
+
+            // Restrict phone and password updates
+            const restrictedFields = ['phone', 'password'];
+            const requestedChanges = ctx.args.data;
+            for (const field of restrictedFields) {
+                if (requestedChanges[field]) {
+                    console.log(`PATCH - Attempt to update restricted field: ${field}`);
+                    const error = new Error(`Updating ${field} is not allowed in this request`);
+                    error.statusCode = 403;
+                    throw error;
+                }
+            }
+
+            // Handle userType change
+            if (requestedChanges.userType) {
+                console.log(`PATCH - Updating userType to: ${requestedChanges.userType}`);
+                await ensureAndAssignRole(targetUserId, requestedChanges.userType);
+            }
+
+            next();
+        } catch (error) {
+            console.error('PATCH - Error in beforeRemote:', error);
+            next(error);
+        }
+    });
+
+    // Before remote hook for subscribeToPlan to allow authenticated users
+    TdUser.beforeRemote('subscribeToPlan', async function (ctx, unused, next) {
+        try {
+            console.log('subscribeToPlan - Entering beforeRemote hook');
+            if (!ctx.req.accessToken || !ctx.req.accessToken.userId) {
+                console.log('subscribeToPlan - Invalid accessToken:', ctx.req.accessToken);
+                const error = new Error('No valid access token provided');
+                error.statusCode = 401;
+                throw error;
+            }
+            const userId = ctx.req.accessToken.userId;
+            console.log(`subscribeToPlan - Authenticated userId: ${userId}`);
+
+            // Ensure user exists
+            const user = await TdUser.findById(userId);
+            if (!user) {
+                console.log(`subscribeToPlan - User ${userId} not found`);
+                const error = new Error('User not found');
+                error.statusCode = 404;
+                throw error;
+            }
+
+            // Check and assign role if none exists
+            const roleMapping = await app.models.RoleMapping.findOne({
+                where: { principalId: userId, principalType: 'USER' }
+            });
+            if (!roleMapping) {
+                console.log(`subscribeToPlan - No role assigned to user ${userId}, assigning default 'user' role`);
+                await ensureAndAssignRole(userId, user.userType || 'user');
+                // Verify role was assigned
+                const newRoleMapping = await app.models.RoleMapping.findOne({
+                    where: { principalId: userId, principalType: 'USER' }
+                });
+                console.log(`subscribeToPlan - Post-assignment role mapping: ${JSON.stringify(newRoleMapping)}`);
+            } else {
+                console.log(`subscribeToPlan - Role mapping found for user ${userId}: ${JSON.stringify(roleMapping)}`);
+            }
+
+            next();
+        } catch (error) {
+            console.error('subscribeToPlan - Error in beforeRemote:', error);
+            next(error);
+        }
+    });
+
+    // Subscribe to a plan
+    TdUser.subscribeToPlan = async function (userId, planId) {
+        try {
+            console.log(`subscribeToPlan - Processing for user ${userId}, plan ${planId}`);
+            const user = await TdUser.findById(userId);
+            if (!user) {
+                console.log(`subscribeToPlan - User ${userId} not found`);
+                const error = new Error('User not found');
+                error.statusCode = 404;
+                throw error;
+            }
+
+            const plan = await app.models.TdPlan.findById(planId);
+            if (!plan) {
+                console.log(`subscribeToPlan - Plan ${planId} not found`);
+                const error = new Error('Plan not found');
+                error.statusCode = 404;
+                throw error;
+            }
+
+            // Calculate expiry date based on duration
+            let expiryDate;
+            const now = new Date();
+            if (plan.Duration === 'days') {
+                expiryDate = new Date(now.getTime() + plan.durationValue * 24 * 60 * 60 * 1000);
+            } else if (plan.Duration === 'months') {
+                expiryDate = new Date(now.setMonth(now.getMonth() + plan.durationValue));
+            } else if (plan.Duration === 'years') {
+                expiryDate = new Date(now.setFullYear(now.getFullYear() + plan.durationValue));
+            } else {
+                console.log(`subscribeToPlan - Invalid plan duration: ${plan.Duration}`);
+                const error = new Error('Invalid plan duration');
+                error.statusCode = 400;
+                throw error;
+            }
+
+            // Update user with planId and expiryDate
+            user.planId = planId;
+            user.expiryDate = expiryDate;
+            await user.save({ validate: false });
+
+            console.log(`subscribeToPlan - User ${userId} subscribed to plan ${planId}, expiry: ${expiryDate}`);
+            return { success: true, message: 'Successfully subscribed to plan', plan, expiryDate };
+        } catch (error) {
+            console.error('subscribeToPlan - Error:', error.message);
+            throw error;
+        }
+    };
+
+    TdUser.remoteMethod('subscribeToPlan', {
+        accepts: [
+            { arg: 'userId', type: 'string', required: true },
+            { arg: 'planId', type: 'string', required: true }
+        ],
+        returns: { arg: 'result', type: 'object', root: true },
+        http: { path: '/subscribeToPlan', verb: 'post' }
+    });
+
+    // [Rest of the file remains unchanged, included for completeness]
     /*** Generate OTP ***/
     TdUser.generateOtp = async function (data) {
         const { email, phone, name, referralCode } = data;
@@ -173,7 +288,6 @@ module.exports = function (TdUser) {
                 if (existingUser.isTemporary) {
                     otp = Math.floor(100000 + Math.random() * 900000).toString();
                     expiry = new Date(Date.now() + 5 * 60 * 1000);
-                    // Use save with validate: false to skip full model validation
                     existingUser.otp = otp;
                     existingUser.otpExpiry = expiry;
                     await existingUser.save({ validate: false });
@@ -198,7 +312,7 @@ module.exports = function (TdUser) {
                     referrald: referralCode || null,
                     status: 'pending',
                     phoneVerified: false,
-                    userType: 'user' // Default to user
+                    userType: 'user'
                 });
                 console.log(`Created temp user with OTP for ${phone}: ${otp}, expires at ${expiry}`);
                 await ensureAndAssignRole(existingUser.id, existingUser.userType);
@@ -244,7 +358,6 @@ module.exports = function (TdUser) {
             throw error;
         }
 
-        // Use save with validate: false
         user.contactName = name;
         user.email = email;
         user.referrald = referralCode || null;
@@ -299,7 +412,6 @@ module.exports = function (TdUser) {
 
             const otp = Math.floor(100000 + Math.random() * 900000).toString();
             const expiry = new Date(Date.now() + 5 * 60 * 1000);
-            // Use save with validate: false
             user.otp = otp;
             user.otpExpiry = expiry;
             await user.save({ validate: false });
@@ -359,12 +471,12 @@ module.exports = function (TdUser) {
             throw error;
         }
 
-        // Use save with validate: false
         user.otp = null;
         user.otpExpiry = null;
         await user.save({ validate: false });
         const token = await user.createAccessToken({ ttl: 1209600 });
         console.log(`User logged in successfully for phone ${phone}, userId: ${user.id}`);
+        await ensureAndAssignRole(user.id, user.userType || 'user'); // Ensure role after login
         return { user, token };
     };
 
@@ -374,10 +486,9 @@ module.exports = function (TdUser) {
         http: { path: '/loginVerifyOtp', verb: 'post' },
     });
 
-    /*** Validate Token ***/
+    // [Rest of the methods remain unchanged]
     TdUser.validateToken = async function (req) {
         const tokenId = req.headers.authorization?.replace('Bearer ', '');
-        // console.log('validateToken - Token ID:', tokenId);
         if (!tokenId) {
             const error = new Error('No token provided');
             error.statusCode = 401;
@@ -385,7 +496,6 @@ module.exports = function (TdUser) {
         }
         const AccessToken = loopback.getModel('AccessToken');
         const token = await AccessToken.findOne({ where: { id: tokenId } });
-        // console.log('validateToken - Found token:', token);
         if (!token) {
             const error = new Error('Invalid token');
             error.statusCode = 401;
@@ -394,14 +504,12 @@ module.exports = function (TdUser) {
         const now = new Date();
         const created = new Date(token.created);
         const ttl = token.ttl * 1000;
-        // console.log('validateToken - Token created:', created, 'TTL:', ttl, 'Now:', now, 'Expires:', new Date(created.getTime() + ttl));
         if (now > new Date(created.getTime() + ttl)) {
             const error = new Error('Token expired');
             error.statusCode = 401;
             throw error;
         }
         const user = await TdUser.findOne({ where: { id: token.userId } });
-        // console.log('validateToken - Found user:', user);
         if (!user) {
             const error = new Error('User not found');
             error.statusCode = 404;

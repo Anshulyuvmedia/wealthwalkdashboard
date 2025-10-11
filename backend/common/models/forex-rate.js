@@ -8,7 +8,7 @@ module.exports = function (ForexRate) {
 
     async function getProducts(contractTypes = 'perpetual_futures,call_options,put_options') {
         try {
-            const response = await axios.get(`${BASE_URL}/products?contract_types=${contractTypes}`);
+            // const response = await axios.get(`${BASE_URL}/products?contract_types=${contractTypes}`);
             // console.log('Raw products count:', response.data.result?.length || 0);
             // console.log('Sample products (first 10):', response.data.result?.slice(0, 10).map(p => ({
             //     symbol: p.symbol,
