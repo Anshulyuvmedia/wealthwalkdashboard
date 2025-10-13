@@ -1,0 +1,72 @@
+{
+    "name": "TdSubscription",
+    "base": "PersistedModel",
+    "idInjection": true,
+    "options": {
+        "validateUpsert": true
+    },
+    "properties": {
+        "userId": {
+            "type": "string",
+            "required": true
+        },
+        "planId": {
+            "type": "string",
+            "required": true
+        },
+        "expiryDate": {
+            "type": "date",
+            "required": true
+        },
+        "tenantCode": {
+            "type": "string",
+            "required": true,
+            "default": "ADB"
+        },
+        "status": {
+            "type": "string",
+            "required": true,
+            "default": "active",
+            "enum": [
+                "active",
+                "expired",
+                "canceled"
+            ]
+        },
+        "createdAt": {
+            "type": "date",
+            "defaultFn": "now"
+        },
+        "updatedAt": {
+            "type": "date"
+        }
+    },
+    "validations": [],
+    "relations": {
+        "user": {
+            "type": "belongsTo",
+            "model": "TdUser",
+            "foreignKey": "userId"
+        },
+        "plan": {
+            "type": "belongsTo",
+            "model": "TdPlan",
+            "foreignKey": "planId"
+        }
+    },
+    "acls": [
+        {
+            "accessType": "*",
+            "principalType": "ROLE",
+            "principalId": "$unauthenticated",
+            "permission": "DENY"
+        },
+        {
+            "accessType": "*",
+            "principalType": "ROLE",
+            "principalId": "$authenticated",
+            "permission": "ALLOW"
+        }
+    ],
+    "methods": {}
+}

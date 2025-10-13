@@ -5,18 +5,18 @@ const boot = require('loopback-boot');
 const morgan = require('morgan');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises;
 require('dotenv').config();
 
 const app = (module.exports = loopback());
 app.enable('trust proxy');
 
-// Configure CORS - Allow all origins for mobile and web access
+// Configure CORS
 app.use(require('cors')({
-  origin: '*',  // Allows requests from mobile (e.g., http://192.168.1.17) and localhost
+  origin: '*',
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-code'],
+  credentials: true
 }));
 
 // Configure multer for file uploads
@@ -25,7 +25,7 @@ const upload = multer({
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
     fieldSize: 1024 * 1024, // 1MB limit for non-file fields
-    parts: 10, // Limit total parts (fields + files)
+    parts: 10 // Limit total parts (fields + files)
   },
   fileFilter: (req, file, cb) => {
     console.log('Multer - Processing file:', file ? file.originalname : 'No file', 'MIME:', file ? file.mimetype : 'N/A');
@@ -39,10 +39,10 @@ const upload = multer({
       return cb(new Error('Invalid file type. Only JPEG, PNG, and GIF are allowed.'));
     }
     cb(null, true);
-  },
+  }
 }).fields([{ name: 'profileImage', maxCount: 1 }]);
 
-// In the multer config for /api/TdUsers/upload:
+// Multer middleware for /api/TdUsers/upload
 app.use('/api/TdUsers/upload', (req, res, next) => {
   console.log('Middleware - /api/TdUsers/upload headers:', req.headers);
   console.log('Middleware - /api/TdUsers/upload content-type:', req.get('content-type'));
@@ -58,13 +58,13 @@ app.use('/api/TdUsers/upload', (req, res, next) => {
       console.error('Multer - File upload error:', err);
       return res.status(400).json({ error: { message: err.message } });
     }
-    console.log('Multer - Files processed successfully:', req.files); // Improved log
+    console.log('Multer - Files processed successfully:', req.files);
     console.log('Multer - Body:', req.body);
     next();
   });
 });
 
-// Apply multer for /api/TdUsers (POST) for multipart requests
+// Multer for /api/TdUsers (POST)
 app.use('/api/TdUsers', (req, res, next) => {
   if (req.is('multipart/form-data')) {
     upload(req, res, (err) => {
@@ -84,7 +84,7 @@ app.use('/api/TdUsers', (req, res, next) => {
   }
 });
 
-// Apply multer for PATCH /api/TdUsers/:id
+// Multer for PATCH /api/TdUsers/:id
 app.use('/api/TdUsers/:id', (req, res, next) => {
   console.log(`Middleware - PATCH /api/TdUsers/${req.params.id} headers:`, req.headers);
   console.log(`Middleware - PATCH /api/TdUsers/${req.params.id} content-type:`, req.get('content-type'));
@@ -106,16 +106,26 @@ app.use('/api/TdUsers/:id', (req, res, next) => {
   }
 });
 
+// Middleware for /api/TdSubscriptions/subscribeToPlan to ensure POST
+app.use('/api/TdSubscriptions/subscribeToPlan', (req, res, next) => {
+  console.log(`Middleware - ${req.method} /api/TdSubscriptions/subscribeToPlan headers:`, req.headers);
+  console.log(`Middleware - ${req.method} /api/TdSubscriptions/subscribeToPlan content-type:`, req.get('content-type'));
+  if (req.method !== 'POST') {
+    console.error(`Invalid method for /api/TdSubscriptions/subscribeToPlan: ${req.method}`);
+    return res.status(405).json({ error: { message: 'Method Not Allowed. Use POST.' } });
+  }
+  next();
+});
+
 // Logging middleware
 app.middleware('routes:before', morgan('combined', {
-  skip: (req) => req.originalUrl.includes('/explorer'),
+  skip: (req) => req.originalUrl.includes('/explorer')
 }));
 
-// Enable LoopBack token middleware, but skip for /api/TdUsers/upload
+// Token middleware
 app.use((req, res, next) => {
   if (req.path === '/api/TdUsers/upload') {
-    console.log('Token Middleware - Skipping for /api/TdUsers/upload');
-    // Manually validate token without consuming body
+    console.log('Token Middleware - Processing for /api/TdUsers/upload');
     const tokenId = req.headers.authorization?.replace('Bearer ', '');
     if (!tokenId) {
       console.error('Token Middleware - No token provided for /api/TdUsers/upload');
@@ -147,15 +157,15 @@ app.use((req, res, next) => {
       currentUserLiteral: 'me',
       searchDefaultTokenKeys: false,
       headers: ['Authorization', 'authorization', 'AUTHORIZATION'],
-      debug: true,
+      debug: true
     })(req, res, next);
   }
 });
 
-// Additional token validation middleware
+// Additional token validation
 app.use((req, res, next) => {
   if (req.path === '/api/TdUsers/upload') {
-    return next(); // Skip additional validation for upload endpoint
+    return next();
   }
   if (!req.accessToken && req.headers.authorization) {
     const tokenId = req.headers.authorization.replace('Bearer ', '');
@@ -179,45 +189,54 @@ app.use((req, res, next) => {
   }
 });
 
-// Configure body-parser to avoid parsing multipart/form-data
+// Body-parser
 const bodyParser = require('body-parser');
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 // Serve static files
 const uploadsDir = path.join(__dirname, 'Uploads');
-if (!fs.existsSync(uploadsDir)) {
-  console.log('Creating Uploads directory:', uploadsDir);
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
 app.use('/Uploads', loopback.static(uploadsDir));
 
-// Initialize roles on server startup
-const Role = app.models.Role;
+// Initialize roles after boot
 async function initializeRoles() {
   try {
+    const Role = app.models.Role;
+    if (!Role) {
+      throw new Error('Role model is undefined');
+    }
     for (const roleName of ['admin', 'user']) {
       let role = await Role.findOne({ where: { name: roleName } });
       if (!role) {
         role = await Role.create({ name: roleName });
         console.log(`Created ${roleName} role: ${role.id}`);
+      } else {
+        console.log(`Role ${roleName} already exists: ${role.id}`);
       }
     }
   } catch (error) {
     console.error('Error initializing roles:', error);
+    throw error;
   }
 }
-initializeRoles();
 
 // Bootstrap the application
-boot(app, __dirname, function (err) {
+boot(app, __dirname, async function (err) {
   if (err) {
     console.error('Error booting application:', err);
     throw err;
   }
+  // Create Uploads directory
+  await fs.mkdir(uploadsDir, { recursive: true });
+  console.log('Created Uploads directory:', uploadsDir);
+
   app.models().forEach(model => {
     console.log(`✅ Model loaded: ${model.modelName}`);
   });
+
+  // Initialize roles after models are loaded
+  await initializeRoles();
+  app.start();
 });
 
 app.start = function () {
@@ -235,5 +254,5 @@ app.start = function () {
 };
 
 if (require.main === module) {
-  app.start();
+  // app.start() is called after initializeRoles
 }

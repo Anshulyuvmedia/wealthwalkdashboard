@@ -18,13 +18,22 @@ exports['default'] = function (Model, options) {
         next();
     });
     Model.observe('before save', function (ctx, next) {
-        if (_.get(ctx.instance, "tenantCode")) {
-            next();
-            return
+        console.log('limitToTenant - before save:', {
+            model: Model.modelName,
+            isNewInstance: ctx.isNewInstance,
+            instance: !!ctx.instance,
+            data: ctx.data
+        });
+        if (ctx.instance && _.get(ctx.instance, "tenantCode")) {
+            console.log('limitToTenant - tenantCode already set for instance:', ctx.instance.tenantCode);
+            return next();
         }
-        if (ctx.isNewInstance) {
-
-            ctx.instance.tenantCode = (ctx.options.currentTenantCode) ? ctx.options.currentTenantCode : "ADB";
+        if (ctx.isNewInstance && ctx.instance) {
+            ctx.instance.tenantCode = ctx.options.currentTenantCode || "ADB";
+            console.log('limitToTenant - Set tenantCode for new instance:', ctx.instance.tenantCode);
+        } else if (ctx.data) {
+            ctx.data.tenantCode = ctx.options.currentTenantCode || "ADB";
+            console.log('limitToTenant - Set tenantCode for update:', ctx.data.tenantCode);
         }
         next();
     });

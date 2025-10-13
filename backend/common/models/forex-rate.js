@@ -4,11 +4,11 @@ const axios = require('axios');
 module.exports = function (ForexRate) {
     const BASE_URL = 'https://api.india.delta.exchange/v2';
     const TWELVE_DATA_BASE_URL = 'https://api.twelvedata.com'; // Twelve Data API base
-    const API_KEY = 'YOUR_API_KEY'; // Replace with your Twelve Data API key
+    const API_KEY = '501ed2603fb947f6aff242d6897678f1'; // Replace with your Twelve Data API key
 
     async function getProducts(contractTypes = 'perpetual_futures,call_options,put_options') {
         try {
-            // const response = await axios.get(`${BASE_URL}/products?contract_types=${contractTypes}`);
+            const response = await axios.get(`${BASE_URL}/products?contract_types=${contractTypes}`);
             // console.log('Raw products count:', response.data.result?.length || 0);
             // console.log('Sample products (first 10):', response.data.result?.slice(0, 10).map(p => ({
             //     symbol: p.symbol,
@@ -32,22 +32,22 @@ module.exports = function (ForexRate) {
 
     function categorizeSymbols(products) {
         const categories = { forex: [], crypto: [], binary: [], commodity: [] };
-        let unmatched = []; // For debugging
+        let unmatched = [];
         products.forEach(product => {
             const symbol = product.symbol;
             const underlying = product.underlying_asset?.symbol;
             if (!underlying) {
                 unmatched.push({ symbol, reason: 'No underlying' });
-                categories.crypto.push(symbol); // Fallback
+                categories.crypto.push(symbol);
                 return;
             }
             if (product.contract_type === 'perpetual_futures') {
                 const upperUnderlying = underlying.toUpperCase();
                 if (['EUR', 'GBP', 'JPY', 'CHF'].includes(upperUnderlying)) {
                     categories.forex.push(symbol);
-                } else if (['XAU', 'CL'].includes(upperUnderlying)) {
+                } else if (['XAU', 'WTI', 'BRENT'].includes(upperUnderlying)) { // Updated
                     categories.commodity.push(symbol);
-                } else if (['BTC', 'ETH', 'SOL', 'XRP', 'AVAX', 'DOGE'].some(u => upperUnderlying.includes(u))) { // Flexible match
+                } else if (['BTC', 'ETH', 'SOL', 'XRP', 'AVAX', 'DOGE'].some(u => upperUnderlying.includes(u))) {
                     categories.crypto.push(symbol);
                 } else {
                     unmatched.push({ symbol, underlying, reason: 'Unmatched underlying' });
@@ -59,60 +59,82 @@ module.exports = function (ForexRate) {
                 unmatched.push({ symbol, reason: `Unknown contract_type: ${product.contract_type}` });
             }
         });
-        // console.log('Unmatched products:', unmatched); // Log for diagnosis
-        // console.log('Categorized symbols by category:', categories);
+        console.log('Unmatched products:', unmatched);
         return categories;
     }
 
     // New: Fetch forex data from Twelve Data
     async function fetchForexData() {
         try {
-            const symbols = 'EUR/USD,GBP/USD,USD/JPY,USD/CHF'; // Common forex pairs
-            const response = await axios.get(`${TWELVE_DATA_BASE_URL}/quote?symbol=${symbols}&apikey=${API_KEY}&source=Realtime`);
-            const quotes = response.data; // Array of quotes if multiple symbols
+            const symbols = 'EUR/USD,GBP/USD,USD/JPY,USD/CHF';
+            const response = await axios.get(`${TWELVE_DATA_BASE_URL}/quote?symbol=${symbols}&apikey=${API_KEY}`);
+            console.log('Raw Twelve Data forex response:', JSON.stringify(response.data, null, 2));
+            const quotes = response.data;
             const forexResults = [];
-            if (Array.isArray(quotes)) {
-                quotes.forEach(quote => {
-                    const rate = parseFloat(quote.close) || 0;
-                    const changePercent = parseFloat(quote.change_pct) || 0;
-                    const timestamp = new Date(quote.datetime);
-                    const currencyPair = quote.symbol; // e.g., "EUR/USD"
+            const failedSymbols = [];
 
-                    const result = {
-                        assetType: 'forex',
-                        currencyPair,
-                        rate,
-                        changePercent,
-                        timestamp,
-                        isDelayed: false // Realtime source
-                    };
+            for (const [symbol, quote] of Object.entries(quotes)) {
+                if (quote.status === 'error') {
+                    console.warn(`Error for symbol ${symbol}: ${quote.message}`);
+                    failedSymbols.push(symbol);
+                    continue;
+                }
 
-                    forexResults.push(result);
+                const rate = parseFloat(quote.close) || 0;
+                const changePercent = parseFloat(quote.percent_change) || 0;
+                const timestamp = new Date(quote.datetime);
+                const currencyPair = symbol;
 
-                    // Upsert to database
-                    ForexRate.upsertWithWhere(
+                const result = {
+                    assetType: 'forex',
+                    currencyPair,
+                    rate,
+                    changePercent,
+                    timestamp,
+                    isDelayed: false
+                };
+                forexResults.push(result);
+
+                await ForexRate.upsertWithWhere(
+                    { currencyPair: result.currencyPair, assetType: result.assetType },
+                    result,
+                    { validate: true }
+                ).catch(err => console.error(`Error saving forex ${currencyPair}:`, err.message));
+            }
+
+            if (failedSymbols.length > 0) {
+                console.warn('Using fallback data for failed forex symbols:', failedSymbols);
+                const fallbackResults = [
+                    { assetType: 'forex', currencyPair: 'EUR/USD', rate: 1.1034, changePercent: 0.5, timestamp: new Date(), isDelayed: true },
+                    { assetType: 'forex', currencyPair: 'GBP/USD', rate: 1.3125, changePercent: -0.2, timestamp: new Date(), isDelayed: true }
+                ].filter(result => failedSymbols.includes(result.currencyPair));
+
+                for (const result of fallbackResults) {
+                    await ForexRate.upsertWithWhere(
                         { currencyPair: result.currencyPair, assetType: result.assetType },
                         result,
                         { validate: true }
-                    ).catch(err => console.error(`Error saving forex ${currencyPair}:`, err.message));
-                });
+                    ).catch(err => console.error(`Error saving fallback forex ${result.currencyPair}:`, err.message));
+                    forexResults.push(result);
+                }
             }
-            // console.log('Fetched forex data from Twelve Data:', forexResults);
+
+            console.log('Fetched forex data from Twelve Data:', forexResults);
             return forexResults;
         } catch (error) {
-            console.error('Error fetching forex from Twelve Data:', error.message);
-            // Fallback: Static data if API fails
+            console.error('Error fetching forex from Twelve Data:', error.message, error.response?.data);
             const fallbackResults = [
                 { assetType: 'forex', currencyPair: 'EUR/USD', rate: 1.1034, changePercent: 0.5, timestamp: new Date(), isDelayed: true },
                 { assetType: 'forex', currencyPair: 'GBP/USD', rate: 1.3125, changePercent: -0.2, timestamp: new Date(), isDelayed: true }
             ];
-            fallbackResults.forEach(result => {
-                ForexRate.upsertWithWhere(
+            for (const result of fallbackResults) {
+                await ForexRate.upsertWithWhere(
                     { currencyPair: result.currencyPair, assetType: result.assetType },
                     result,
                     { validate: true }
                 ).catch(err => console.error(`Error saving fallback forex ${result.currencyPair}:`, err.message));
-            });
+                forexResults.push(result);
+            }
             console.log('Using fallback forex data:', fallbackResults);
             return fallbackResults;
         }
@@ -121,53 +143,119 @@ module.exports = function (ForexRate) {
     // New: Fetch commodity data from Twelve Data
     async function fetchCommodityData() {
         try {
-            const symbols = 'XAU/USD,CL/USD'; // Gold and Crude Oil
-            const response = await axios.get(`${TWELVE_DATA_BASE_URL}/quote?symbol=${symbols}&apikey=${API_KEY}&source=Realtime`);
-            const quotes = response.data; // Array of quotes
+            const symbols = 'XAU/USD,WTI/USD'; // WTI Crude Oil; swap to 'BRENT/USD' if preferred
+            const response = await axios.get(`${TWELVE_DATA_BASE_URL}/quote?symbol=${symbols}&apikey=${API_KEY}`);
+            console.log('Raw Twelve Data commodity response:', JSON.stringify(response.data, null, 2));
+            const quotes = response.data;
             const commodityResults = [];
-            if (Array.isArray(quotes)) {
-                quotes.forEach(quote => {
-                    const rate = parseFloat(quote.close) || 0;
-                    const changePercent = parseFloat(quote.change_pct) || 0;
-                    const timestamp = new Date(quote.datetime);
-                    const currencyPair = quote.symbol; // e.g., "XAU/USD"
+            const failedSymbols = [];
 
-                    const result = {
-                        assetType: 'commodity',
-                        currencyPair,
-                        rate,
-                        changePercent,
-                        timestamp,
-                        isDelayed: false
-                    };
+            // Process each symbol in the response object
+            for (const [symbol, quote] of Object.entries(quotes)) {
+                if (quote.status === 'error') {
+                    console.warn(`Error for symbol ${symbol}: ${quote.message}`);
+                    failedSymbols.push(symbol);
+                    continue;
+                }
 
-                    commodityResults.push(result);
+                // Skip if no close price or invalid data
+                if (!quote.close) {
+                    console.warn(`No valid data for symbol ${symbol}`);
+                    failedSymbols.push(symbol);
+                    continue;
+                }
 
-                    // Upsert to database
-                    ForexRate.upsertWithWhere(
+                const rate = parseFloat(quote.close) || 0;
+                const changePercent = parseFloat(quote.percent_change) || 0;
+                const timestamp = new Date(quote.datetime || Date.now());
+
+                // Normalize currencyPair (e.g., ensure /USD format)
+                let currencyPair = symbol;
+                if (symbol === 'WTI') currencyPair = 'WTI/USD'; // Fallback if API returns without /USD
+                if (symbol === 'BRENT') currencyPair = 'BRENT/USD';
+
+                const result = {
+                    assetType: 'commodity',
+                    currencyPair,
+                    rate,
+                    changePercent,
+                    timestamp,
+                    isDelayed: false
+                };
+                commodityResults.push(result);
+
+                // Upsert to database
+                await ForexRate.upsertWithWhere(
+                    { currencyPair: result.currencyPair, assetType: result.assetType },
+                    result,
+                    { validate: true }
+                ).catch(err => console.error(`Error saving commodity ${currencyPair}:`, err.message));
+            }
+
+            // Use fallback only for failed symbols
+            if (failedSymbols.length > 0) {
+                console.warn('Using fallback data for failed symbols:', failedSymbols);
+                const fallbackMap = {
+                    'XAU/USD': { rate: 1800.50, changePercent: 1.2 },
+                    'WTI/USD': { rate: 75.25, changePercent: -0.8 }
+                    // Add 'BRENT/USD': { rate: 80.00, changePercent: 0.5 } if using Brent
+                };
+                for (const failedSymbol of failedSymbols) {
+                    const fallback = fallbackMap[failedSymbol];
+                    if (fallback) {
+                        const result = {
+                            assetType: 'commodity',
+                            currencyPair: failedSymbol,
+                            rate: fallback.rate,
+                            changePercent: fallback.changePercent,
+                            timestamp: new Date(),
+                            isDelayed: true
+                        };
+                        await ForexRate.upsertWithWhere(
+                            { currencyPair: result.currencyPair, assetType: result.assetType },
+                            result,
+                            { validate: true }
+                        ).catch(err => console.error(`Error saving fallback commodity ${failedSymbol}:`, err.message));
+                        commodityResults.push(result);
+                    }
+                }
+            }
+
+            if (commodityResults.length === 0) {
+                console.warn('No valid commodity data; using full fallback');
+                const fullFallback = [
+                    { assetType: 'commodity', currencyPair: 'XAU/USD', rate: 1800.50, changePercent: 1.2, timestamp: new Date(), isDelayed: true },
+                    { assetType: 'commodity', currencyPair: 'WTI/USD', rate: 75.25, changePercent: -0.8, timestamp: new Date(), isDelayed: true }
+                ];
+                for (const result of fullFallback) {
+                    await ForexRate.upsertWithWhere(
                         { currencyPair: result.currencyPair, assetType: result.assetType },
                         result,
                         { validate: true }
-                    ).catch(err => console.error(`Error saving commodity ${currencyPair}:`, err.message));
-                });
+                    ).catch(err => console.error(`Error saving full fallback ${result.currencyPair}:`, err.message));
+                    commodityResults.push(result);
+                }
+                console.log('Using full fallback commodity data:', fullFallback);
+                return fullFallback;
             }
-            console.log('Fetched commodity data from Twelve Data:', commodityResults);
+
+            // console.log('Fetched commodity data from Twelve Data:', commodityResults);
             return commodityResults;
         } catch (error) {
-            console.error('Error fetching commodity from Twelve Data:', error.message);
-            // Fallback: Static data
+            console.error('Error fetching commodity from Twelve Data:', error.message, error.response?.data);
+            // Full fallback on catch
             const fallbackResults = [
                 { assetType: 'commodity', currencyPair: 'XAU/USD', rate: 1800.50, changePercent: 1.2, timestamp: new Date(), isDelayed: true },
-                { assetType: 'commodity', currencyPair: 'CL/USD', rate: 75.25, changePercent: -0.8, timestamp: new Date(), isDelayed: true }
+                { assetType: 'commodity', currencyPair: 'WTI/USD', rate: 75.25, changePercent: -0.8, timestamp: new Date(), isDelayed: true }
             ];
-            fallbackResults.forEach(result => {
-                ForexRate.upsertWithWhere(
+            for (const result of fallbackResults) {
+                await ForexRate.upsertWithWhere(
                     { currencyPair: result.currencyPair, assetType: result.assetType },
                     result,
                     { validate: true }
                 ).catch(err => console.error(`Error saving fallback commodity ${result.currencyPair}:`, err.message));
-            });
-            console.log('Using fallback commodity data:', fallbackResults);
+            }
+            console.log('Using full fallback commodity data:', fallbackResults);
             return fallbackResults;
         }
     }

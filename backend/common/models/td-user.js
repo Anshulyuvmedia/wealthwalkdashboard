@@ -51,6 +51,7 @@ module.exports = function (TdUser) {
 
     // Ensure role assignment during user creation
     TdUser.observe('after save', async function (ctx) {
+        console.log('after save - Triggered for instance:', ctx.instance?.id, 'isNewInstance:', ctx.isNewInstance);
         if (ctx.instance && ctx.isNewInstance) {
             const userId = ctx.instance.id;
             const userType = ctx.instance.userType || 'user';
@@ -117,7 +118,7 @@ module.exports = function (TdUser) {
 
             const role = await app.models.Role.findById(roleMapping?.roleId);
             console.log(`PATCH - User ${userId} role: ${role?.name || 'user'}`);
-            if (role?.name !== 'admin' && userId !== targetUserId) {
+            if (role?.name !== 'admin' && userId.toString() !== targetUserId) {
                 console.log(`PATCH - User ${userId} (role: ${role?.name || 'user'}) attempted to update user ${targetUserId}`);
                 const error = new Error('Only admins can update other users');
                 error.statusCode = 403;
@@ -149,110 +150,8 @@ module.exports = function (TdUser) {
         }
     });
 
-    // Before remote hook for subscribeToPlan to allow authenticated users
-    TdUser.beforeRemote('subscribeToPlan', async function (ctx, unused, next) {
-        try {
-            console.log('subscribeToPlan - Entering beforeRemote hook');
-            if (!ctx.req.accessToken || !ctx.req.accessToken.userId) {
-                console.log('subscribeToPlan - Invalid accessToken:', ctx.req.accessToken);
-                const error = new Error('No valid access token provided');
-                error.statusCode = 401;
-                throw error;
-            }
-            const userId = ctx.req.accessToken.userId;
-            console.log(`subscribeToPlan - Authenticated userId: ${userId}`);
+    const normalizePhoneNumber = (phone) => phone.replace(/[^0-9]/g, '');
 
-            // Ensure user exists
-            const user = await TdUser.findById(userId);
-            if (!user) {
-                console.log(`subscribeToPlan - User ${userId} not found`);
-                const error = new Error('User not found');
-                error.statusCode = 404;
-                throw error;
-            }
-
-            // Check and assign role if none exists
-            const roleMapping = await app.models.RoleMapping.findOne({
-                where: { principalId: userId, principalType: 'USER' }
-            });
-            if (!roleMapping) {
-                console.log(`subscribeToPlan - No role assigned to user ${userId}, assigning default 'user' role`);
-                await ensureAndAssignRole(userId, user.userType || 'user');
-                // Verify role was assigned
-                const newRoleMapping = await app.models.RoleMapping.findOne({
-                    where: { principalId: userId, principalType: 'USER' }
-                });
-                console.log(`subscribeToPlan - Post-assignment role mapping: ${JSON.stringify(newRoleMapping)}`);
-            } else {
-                console.log(`subscribeToPlan - Role mapping found for user ${userId}: ${JSON.stringify(roleMapping)}`);
-            }
-
-            next();
-        } catch (error) {
-            console.error('subscribeToPlan - Error in beforeRemote:', error);
-            next(error);
-        }
-    });
-
-    // Subscribe to a plan
-    TdUser.subscribeToPlan = async function (userId, planId) {
-        try {
-            console.log(`subscribeToPlan - Processing for user ${userId}, plan ${planId}`);
-            const user = await TdUser.findById(userId);
-            if (!user) {
-                console.log(`subscribeToPlan - User ${userId} not found`);
-                const error = new Error('User not found');
-                error.statusCode = 404;
-                throw error;
-            }
-
-            const plan = await app.models.TdPlan.findById(planId);
-            if (!plan) {
-                console.log(`subscribeToPlan - Plan ${planId} not found`);
-                const error = new Error('Plan not found');
-                error.statusCode = 404;
-                throw error;
-            }
-
-            // Calculate expiry date based on duration
-            let expiryDate;
-            const now = new Date();
-            if (plan.Duration === 'days') {
-                expiryDate = new Date(now.getTime() + plan.durationValue * 24 * 60 * 60 * 1000);
-            } else if (plan.Duration === 'months') {
-                expiryDate = new Date(now.setMonth(now.getMonth() + plan.durationValue));
-            } else if (plan.Duration === 'years') {
-                expiryDate = new Date(now.setFullYear(now.getFullYear() + plan.durationValue));
-            } else {
-                console.log(`subscribeToPlan - Invalid plan duration: ${plan.Duration}`);
-                const error = new Error('Invalid plan duration');
-                error.statusCode = 400;
-                throw error;
-            }
-
-            // Update user with planId and expiryDate
-            user.planId = planId;
-            user.expiryDate = expiryDate;
-            await user.save({ validate: false });
-
-            console.log(`subscribeToPlan - User ${userId} subscribed to plan ${planId}, expiry: ${expiryDate}`);
-            return { success: true, message: 'Successfully subscribed to plan', plan, expiryDate };
-        } catch (error) {
-            console.error('subscribeToPlan - Error:', error.message);
-            throw error;
-        }
-    };
-
-    TdUser.remoteMethod('subscribeToPlan', {
-        accepts: [
-            { arg: 'userId', type: 'string', required: true },
-            { arg: 'planId', type: 'string', required: true }
-        ],
-        returns: { arg: 'result', type: 'object', root: true },
-        http: { path: '/subscribeToPlan', verb: 'post' }
-    });
-
-    // [Rest of the file remains unchanged, included for completeness]
     /*** Generate OTP ***/
     TdUser.generateOtp = async function (data) {
         const { email, phone, name, referralCode } = data;
@@ -290,6 +189,7 @@ module.exports = function (TdUser) {
                     expiry = new Date(Date.now() + 5 * 60 * 1000);
                     existingUser.otp = otp;
                     existingUser.otpExpiry = expiry;
+                    existingUser.tenantCode = existingUser.tenantCode || 'ADB';
                     await existingUser.save({ validate: false });
                     console.log(`Generated new OTP for ${phone}: ${otp}, expires at ${expiry}`);
                 } else {
@@ -312,7 +212,8 @@ module.exports = function (TdUser) {
                     referrald: referralCode || null,
                     status: 'pending',
                     phoneVerified: false,
-                    userType: 'user'
+                    userType: 'user',
+                    tenantCode: 'ADB'
                 });
                 console.log(`Created temp user with OTP for ${phone}: ${otp}, expires at ${expiry}`);
                 await ensureAndAssignRole(existingUser.id, existingUser.userType);
@@ -328,7 +229,7 @@ module.exports = function (TdUser) {
     TdUser.remoteMethod('generateOtp', {
         accepts: { arg: 'data', type: 'object', http: { source: 'body' } },
         returns: { arg: 'result', type: 'object', root: true },
-        http: { path: '/generateOtp', verb: 'post' },
+        http: { path: '/generateOtp', verb: 'post' }
     });
 
     /*** Verify OTP ***/
@@ -367,6 +268,7 @@ module.exports = function (TdUser) {
         user.password = Math.random().toString(36).slice(-8);
         user.otp = null;
         user.otpExpiry = null;
+        user.tenantCode = user.tenantCode || 'ADB';
         await user.save({ validate: false });
 
         await ensureAndAssignRole(user.id, user.userType || 'user');
@@ -376,10 +278,8 @@ module.exports = function (TdUser) {
     TdUser.remoteMethod('verifyOTP', {
         accepts: { arg: 'data', type: 'object', http: { source: 'body' } },
         returns: { arg: 'user', type: 'object', root: true },
-        http: { path: '/verifyOTP', verb: 'post' },
+        http: { path: '/verifyOTP', verb: 'post' }
     });
-
-    const normalizePhoneNumber = (phone) => phone.replace(/[^0-9]/g, '');
 
     /*** Login Generate OTP ***/
     TdUser.loginGenerateOtp = async function (data) {
@@ -414,7 +314,18 @@ module.exports = function (TdUser) {
             const expiry = new Date(Date.now() + 5 * 60 * 1000);
             user.otp = otp;
             user.otpExpiry = expiry;
+            user.tenantCode = user.tenantCode || 'ADB';
             await user.save({ validate: false });
+
+            // Send SMS using mobile_no parameter
+            await new Promise((resolve, reject) => {
+                smsService.sendSMS(phone, `Your OTP is ${otp}`, '1207161762420476512', (err, response) => {
+                    if (err || response?.error) {
+                        return reject(err || new Error(response.error));
+                    }
+                    resolve();
+                });
+            });
 
             const updatedUser = await TdUser.findOne({ where: { phone } });
             console.log(`Post-update check: OTP=${updatedUser.otp}, Expiry=${updatedUser.otpExpiry}`);
@@ -433,7 +344,7 @@ module.exports = function (TdUser) {
     TdUser.remoteMethod('loginGenerateOtp', {
         accepts: { arg: 'data', type: 'object', http: { source: 'body' } },
         returns: { arg: 'result', type: 'object', root: true },
-        http: { path: '/loginGenerateOtp', verb: 'post' },
+        http: { path: '/loginGenerateOtp', verb: 'post' }
     });
 
     /*** Login Verify OTP ***/
@@ -473,20 +384,21 @@ module.exports = function (TdUser) {
 
         user.otp = null;
         user.otpExpiry = null;
+        user.tenantCode = user.tenantCode || 'ADB';
         await user.save({ validate: false });
         const token = await user.createAccessToken({ ttl: 1209600 });
         console.log(`User logged in successfully for phone ${phone}, userId: ${user.id}`);
-        await ensureAndAssignRole(user.id, user.userType || 'user'); // Ensure role after login
+        await ensureAndAssignRole(user.id, user.userType || 'user');
         return { user, token };
     };
 
     TdUser.remoteMethod('loginVerifyOtp', {
         accepts: { arg: 'data', type: 'object', http: { source: 'body' } },
         returns: { arg: 'result', type: 'object', root: true },
-        http: { path: '/loginVerifyOtp', verb: 'post' },
+        http: { path: '/loginVerifyOtp', verb: 'post' }
     });
 
-    // [Rest of the methods remain unchanged]
+    /*** Validate Token ***/
     TdUser.validateToken = async function (req) {
         const tokenId = req.headers.authorization?.replace('Bearer ', '');
         if (!tokenId) {
@@ -521,7 +433,7 @@ module.exports = function (TdUser) {
     TdUser.remoteMethod('validateToken', {
         accepts: [{ arg: 'req', type: 'object', http: { source: 'req' } }],
         returns: { arg: 'result', type: 'object', root: true },
-        http: { path: '/validateToken', verb: 'get' },
+        http: { path: '/validateToken', verb: 'get' }
     });
 
     /*** Logout ***/
@@ -548,14 +460,14 @@ module.exports = function (TdUser) {
     TdUser.remoteMethod('logout', {
         accepts: [{ arg: 'req', type: 'object', http: { source: 'req' } }],
         returns: { arg: 'result', type: 'object', root: true },
-        http: { path: '/logout', verb: 'post' },
+        http: { path: '/logout', verb: 'post' }
     });
 
     /*** Test SMS ***/
-    TdUser.testSMS = async function (phone, message) {
+    TdUser.testSMS = async function (mobile_no, message) {
         const dltTemplateId = '1207161762420476512';
         await new Promise((resolve, reject) => {
-            smsService.sendSMS(phone, message, dltTemplateId, (err, response) => {
+            smsService.sendSMS(mobile_no, message, dltTemplateId, (err, response) => {
                 if (err || response?.error) {
                     return reject(err || new Error(response.error));
                 }
@@ -567,11 +479,11 @@ module.exports = function (TdUser) {
 
     TdUser.remoteMethod('testSMS', {
         accepts: [
-            { arg: 'phone', type: 'string', required: true },
-            { arg: 'message', type: 'string', required: true },
+            { arg: 'mobile_no', type: 'string', required: true },
+            { arg: 'message', type: 'string', required: true }
         ],
         returns: { arg: 'success', type: 'boolean', root: true },
-        http: { path: '/testSMS', verb: 'post' },
+        http: { path: '/testSMS', verb: 'post' }
     });
 
     /*** Reset Password from Admin Panel ***/
@@ -581,6 +493,7 @@ module.exports = function (TdUser) {
 
         const newPassword = Math.random().toString(36).substring(2, 8);
         userObj.password = newPassword;
+        userObj.tenantCode = userObj.tenantCode || 'ADB';
         await userObj.save();
 
         const dltTemplateId = '1207166157900066388';
@@ -599,10 +512,10 @@ module.exports = function (TdUser) {
     TdUser.remoteMethod('resetUserPassFromPanel', {
         accepts: [
             { arg: 'userId', type: 'string', required: true },
-            { arg: 'debug', type: 'boolean', required: false },
+            { arg: 'debug', type: 'boolean', required: false }
         ],
         returns: { arg: 'result', type: 'string', root: true },
-        http: { path: '/resetUserPassFromPanel', verb: 'post' },
+        http: { path: '/resetUserPassFromPanel', verb: 'post' }
     });
 
     /*** Change User Status ***/
@@ -622,6 +535,7 @@ module.exports = function (TdUser) {
         });
 
         userObj.status = newStatus;
+        userObj.tenantCode = userObj.tenantCode || 'ADB';
         await userObj.save();
 
         return 'Status changed successfully.';
@@ -630,22 +544,23 @@ module.exports = function (TdUser) {
     TdUser.remoteMethod('changeUserStatus', {
         accepts: [
             { arg: 'userId', type: 'string', required: true },
-            { arg: 'newStatus', type: 'string', required: true },
+            { arg: 'newStatus', type: 'string', required: true }
         ],
         returns: { arg: 'result', type: 'string', root: true },
-        http: { path: '/changeUserStatus', verb: 'post' },
+        http: { path: '/changeUserStatus', verb: 'post' }
     });
 
     /*** Reset Password with OTP ***/
     TdUser.resetUserPassword = async function (handle, otp, newPassword) {
         const userObj = await TdUser.findOne({
-            where: { or: [{ username: handle }, { email: handle }] },
+            where: { or: [{ username: handle }, { email: handle }] }
         });
         if (!userObj) throw new Error('User is not found');
         if (userObj.otp !== otp) throw new Error('Provided OTP is not valid');
 
         userObj.password = newPassword;
         userObj.otp = null;
+        userObj.tenantCode = userObj.tenantCode || 'ADB';
         await userObj.save();
 
         return 'Password reset successfully.';
@@ -655,10 +570,10 @@ module.exports = function (TdUser) {
         accepts: [
             { arg: 'handle', type: 'string', required: true },
             { arg: 'otp', type: 'string', required: true },
-            { arg: 'newPassword', type: 'string', required: true },
+            { arg: 'newPassword', type: 'string', required: true }
         ],
         returns: { arg: 'result', type: 'string', root: true },
-        http: { path: '/resetUserPassword', verb: 'post' },
+        http: { path: '/resetUserPassword', verb: 'post' }
     });
 
     /*** Generate Access Token ***/
@@ -678,7 +593,7 @@ module.exports = function (TdUser) {
             id: tokenId,
             userId: user.id,
             ttl: 1209600,
-            created: new Date(),
+            created: new Date()
         });
 
         return token;
@@ -687,13 +602,12 @@ module.exports = function (TdUser) {
     TdUser.remoteMethod('generateAccessToken', {
         accepts: [{ arg: 'username', type: 'string', required: true }],
         returns: { arg: 'result', type: 'object', root: true },
-        http: { path: '/generateAccessToken', verb: 'post' },
+        http: { path: '/generateAccessToken', verb: 'post' }
     });
 
     /*** Register with Password (for Website) ***/
     TdUser.registerWithPassword = async function (data) {
         const { email, phone, password, contactName, city, state, country, referrald, isTermsAgreed, userType = 'user' } = data;
-        // console.log('user data', data);
 
         if (!email || !phone || !password || !contactName || !isTermsAgreed) {
             const error = new Error('Email, phone, password, name, and terms agreement are required');
@@ -726,7 +640,7 @@ module.exports = function (TdUser) {
             phoneVerified: false,
             status: 'active',
             isTemporary: false,
-            planId: 'I'
+            tenantCode: 'ADB'
         });
 
         await ensureAndAssignRole(user.id, userType);
@@ -736,13 +650,12 @@ module.exports = function (TdUser) {
     TdUser.remoteMethod('registerWithPassword', {
         accepts: { arg: 'data', type: 'object', http: { source: 'body' } },
         returns: { arg: 'user', type: 'object', root: true },
-        http: { path: '/registerWithPassword', verb: 'post' },
+        http: { path: '/registerWithPassword', verb: 'post' }
     });
 
     /*** Login with Password (for Website) ***/
     TdUser.loginWithPassword = async function (credentials) {
         const { email, password } = credentials;
-        // console.log('loginWithPassword - Credentials:', { email, password });
         if (!email || !password) {
             const error = new Error('Email and password are required');
             error.statusCode = 400;
@@ -751,43 +664,37 @@ module.exports = function (TdUser) {
         const user = await TdUser.findOne({
             where: { or: [{ email }, { username: email }] }
         });
-        // console.log('loginWithPassword - Found user:', user ? user.id : null);
         if (!user) {
-            // console.log('loginWithPassword - User not found:', email);
             const error = new Error('Invalid credentials');
             error.statusCode = 401;
             throw error;
         }
         const isPasswordValid = await user.hasPassword(password);
-        // console.log('loginWithPassword - Password valid:', isPasswordValid);
         if (!isPasswordValid) {
-            // console.log('loginWithPassword - Invalid password for:', email);
             const error = new Error('Invalid credentials');
             error.statusCode = 401;
             throw error;
         }
         if (user.status !== 'active') {
-            // console.log('loginWithPassword - Account not active:', email);
             const error = new Error('Account is not active');
             error.statusCode = 403;
             throw error;
         }
         await TdUser.updateAll(
             { id: user.id },
-            { lastLogin: new Date() }
+            { lastLogin: new Date(), tenantCode: user.tenantCode || 'ADB' }
         );
-        // console.log('loginWithPassword - Creating token for:', email);
         const token = await user.createAccessToken({ ttl: 1209600 });
-        // console.log('loginWithPassword - Token created:', token.id);
         return { user, token };
     };
 
     TdUser.remoteMethod('loginWithPassword', {
         accepts: { arg: 'credentials', type: 'object', http: { source: 'body' } },
         returns: { arg: 'result', type: 'object', root: true },
-        http: { path: '/loginWithPassword', verb: 'post' },
+        http: { path: '/loginWithPassword', verb: 'post' }
     });
 
+    /*** Upload File ***/
     TdUser.upload = async function (ctx) {
         try {
             console.log('TdUser.upload - Request files:', ctx.req.files);
@@ -802,11 +709,11 @@ module.exports = function (TdUser) {
             const sanitizedSubDir = subDir.replace(/[^a-zA-Z0-9_-]/g, '');
             const uploadDir = path.join(__dirname, '../../Uploads', sanitizedSubDir);
             console.log('TdUser.upload - Creating directory:', uploadDir);
-            await fs.mkdir(uploadDir, { recursive: true });
+            await fs.promises.mkdir(uploadDir, { recursive: true });
             const fileName = `${Date.now()}_${file.originalname}`;
             const filePath = path.join(uploadDir, fileName);
             console.log('TdUser.upload - Writing file to:', filePath);
-            await fs.writeFile(filePath, file.buffer);
+            await fs.promises.writeFile(filePath, file.buffer);
             const url = `/Uploads/${sanitizedSubDir}/${fileName}`;
             console.log('TdUser.upload - File uploaded successfully, URL:', url);
             return { url };
@@ -820,7 +727,7 @@ module.exports = function (TdUser) {
     TdUser.remoteMethod('upload', {
         accepts: [{ arg: 'ctx', type: 'object', http: { source: 'context' } }],
         returns: { arg: 'result', type: 'object', root: true },
-        http: { path: '/upload', verb: 'post' },
+        http: { path: '/upload', verb: 'post' }
     });
 
     /*** Debug Token ***/

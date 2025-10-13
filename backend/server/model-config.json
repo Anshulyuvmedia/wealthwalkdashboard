@@ -130,5 +130,9 @@
   "ForexRate": {
     "dataSource": "mongoDB",
     "public": true
+  },
+  "TdSubscription": {
+    "dataSource": "mongoDB",
+    "public": true
   }
 }
