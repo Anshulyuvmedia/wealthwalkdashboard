@@ -50,6 +50,11 @@ const data = {
         },
       ],
     },
+    {
+      title: "Strategy",
+      url: "/strategy",
+      icon: IconCurrencyRupee,
+    },
   ],
 };
 

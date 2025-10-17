@@ -14,6 +14,9 @@ import EditPlan from "@/app/Pages/plans/EditPlan";
 import Signals from "@/app/Pages/signals/signalpage";
 import AddSignal from "@/app/Pages/signals/addSignal";
 import EditSignal from "@/app/Pages/signals/[id]";
+import Strategy from "@/app/Pages/strategy/strategypage";
+import AddStrategy from "@/app/Pages/strategy/addStrategy";
+import EditStrategy from "@/app/Pages/strategy/EditStrategy";
 
 const authProtectedRoutes = [
   { path: "/", component: <Dashboard /> },
@@ -28,6 +31,10 @@ const authProtectedRoutes = [
   { path: "/plans", component: <Plans /> },
   { path: "/plans/add", component: <AddPlan /> }, // New route for adding a plan
   { path: "/plans/edit/:id", component: <EditPlan /> }, // New route for editing a plan
+
+  { path: "/strategy", component: <Strategy /> },
+  { path: "/strategy/add", component: <AddStrategy /> },
+  { path: "/strategy/edit/:id", component: <EditStrategy /> },
 
   { path: "/paidsignals", component: <Signals signalType={"Paid"} /> },
   { path: "/freesignals", component: <Signals signalType={"Free"} /> },

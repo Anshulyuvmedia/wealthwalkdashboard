@@ -2,13 +2,14 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SectionCards } from "@/components/section-cards";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { Users, Video, FileText, LineChart } from "lucide-react";
+import { Users, Video, FileText, LineChart, ListTodo } from "lucide-react";
 
 const cardData = [
   { title: "Users", icon: <Users color="#FF6B6B" />, path: "/users" }, // Red
   { title: "Courses", icon: <Video color="#4ECDC4" />, path: "/courses" }, // Teal
   { title: "Packages", icon: <FileText color="#45B7D1" />, path: "/plans" }, // Light Blue
   { title: "Signals", icon: <LineChart color="#F7D794" />, path: "/paidsignals" }, // Light Yellow
+  { title: "Strategy", icon: <ListTodo  color="#F74723" />, path: "/strategy" }, // Light Yellow
 ];
 
 export default function Page() {
