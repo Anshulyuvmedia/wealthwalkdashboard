@@ -13,10 +13,17 @@ import ExitConditions from "@/components/strategycomponets/ExitConditions";
 import OptionPositionBuilder from "@/components/strategycomponets/OptionPositionBuilder";
 import RiskManagement from "@/components/strategycomponets/RiskManagement";
 import { Ban, Trash2 } from "lucide-react";
+import OrderLegs from "@/components/strategycomponets/OrderLegs";
 
 const AddStrategy: React.FC = () => {
     const navigate = useNavigate();
     const [strategyType, setStrategyType] = useState<"timebased" | "indicatorbased">("timebased");
+    const [selectedTemplate, setSelectedTemplate] = useState<string>(''); // Changed type to string
+
+    // Callback to handle template selection
+    const handleTemplateSelect = (template: string) => {
+        setSelectedTemplate(template);
+    };
 
     return (
         <SidebarProvider
@@ -56,11 +63,17 @@ const AddStrategy: React.FC = () => {
                         </div>
 
                         <StrategyType strategyType={strategyType} setStrategyType={setStrategyType} />
-                        <Instruments />
-                        <OrderSettings />
-                        <EntryConditions />
-                        <ExitConditions />
-                        <OptionPositionBuilder />
+                        <Instruments strategyType={strategyType} />
+                        <OrderSettings strategyType={strategyType} template={selectedTemplate} onTemplateSelect={handleTemplateSelect} />
+                        {strategyType === 'timebased' ? (
+                            <OrderLegs selectedTemplate={selectedTemplate} />
+                        ) : (
+                            <>
+                                <EntryConditions />
+                                <ExitConditions />
+                                <OptionPositionBuilder />
+                            </>
+                        )}
                         <RiskManagement />
 
                         <div className="flex justify-end gap-4">

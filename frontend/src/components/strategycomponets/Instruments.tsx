@@ -1,21 +1,9 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { PlusCircle, Search, X } from "lucide-react";
 import { toast } from "sonner";
-
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-    InputGroup,
-    InputGroupAddon,
-    InputGroupInput,
-} from "@/components/ui/input-group";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, } from "@/components/ui/dialog";
+import { InputGroup, InputGroupAddon, InputGroupInput, } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
@@ -42,7 +30,11 @@ const dummyInstruments = [
     { id: 18, name: "SILVER", type: "mcx", price: 0.0, exchange: "MCX" },
 ];
 
-const Instruments: React.FC = () => {
+interface StrategyTypeProps {
+    strategyType: "timebased" | "indicatorbased";
+}
+
+const Instruments: React.FC<StrategyTypeProps> = ({ strategyType }) => {
     const [marketType, setMarketType] = useState("options");
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedInstruments, setSelectedInstruments] = useState<
@@ -100,6 +92,12 @@ const Instruments: React.FC = () => {
             )
         );
     };
+
+    useEffect(() => {
+        if (strategyType === "timebased") {
+            setMarketType("options");
+        }
+    }, [strategyType]);
 
     return (
         <>
@@ -173,22 +171,31 @@ const Instruments: React.FC = () => {
                                             <RadioGroup
                                                 value={marketType}
                                                 onValueChange={setMarketType}
-                                                className="flex flex-wrap gap-4"
+                                                className="flex flex-wrap gap-3"
                                             >
-                                                {["options", "equity", "futures", "indices", "cds", "mcx"].map(
-                                                    (type) => (
-                                                        <div key={type} className="flex items-center gap-2">
-                                                            <RadioGroupItem value={type} id={type} />
-                                                            <Label htmlFor={type}>{type.toUpperCase()}</Label>
-                                                        </div>
-                                                    )
-                                                )}
+                                                {["Options", "Equity", "Futures", "Indices", "CDS", "MCX"].map((type) => (
+                                                    <div key={type} className="flex items-center gap-2">
+                                                        <RadioGroupItem
+                                                            value={type.toLowerCase()} // Ensure value matches `marketType` state
+                                                            id={type}
+                                                            disabled={strategyType === "timebased" && type !== "Options"} // Disable non-Options when timebased
+                                                        />
+                                                        <Label htmlFor={type}>{type}</Label>
+                                                    </div>
+                                                ))}
                                             </RadioGroup>
                                         </div>
 
-                                        <DialogDescription>
-                                            Search scripts: i.e. State Bank Of India, Banknifty, Crudeoil
-                                        </DialogDescription>
+                                        {strategyType == 'timebased' ?
+                                            <DialogDescription>
+                                                * Only option category allowed for Time-Based strategy type
+                                            </DialogDescription>
+                                            :
+                                            <DialogDescription>
+                                                Search scripts: i.e. State Bank Of India, Banknifty, Crudeoil
+                                            </DialogDescription>
+                                        }
+
 
                                         <div className="my-3">
                                             <InputGroup>

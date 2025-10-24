@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
-import { Switch, } from "@/components/ui/switch";
 import { PlusCircle, Trash2, Copy, ChevronsDownUp, ChevronDown } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 const OptionPositionBuilder: React.FC = () => {
@@ -93,7 +92,12 @@ const OptionPositionBuilder: React.FC = () => {
                                                 <ChevronsDownUp className={isBuy ? "text-green-600" : "text-red-600"} size={16} />
                                             </div>
                                             <div className="w-20">
-                                                <Input id="qty" type="number" autoComplete="off" placeholder="1" value={1} />
+                                                <InputGroup>
+                                                    <InputGroupInput id="qty" type="number" autoComplete="off" placeholder="1" value={1} />
+                                                    <InputGroupAddon>
+                                                        <InputGroupText>Qty:</InputGroupText>
+                                                    </InputGroupAddon>
+                                                </InputGroup>
                                             </div>
                                             <div
                                                 onClick={() => setIsWeekly(!isWeekly)}
@@ -187,6 +191,9 @@ const OptionPositionBuilder: React.FC = () => {
                                                         </DropdownMenu>
                                                     </InputGroupAddon>
                                                     <InputGroupInput placeholder="30" className="w-20" type="number" />
+                                                    <InputGroupAddon>
+                                                        <InputGroupText>Qty:</InputGroupText>
+                                                    </InputGroupAddon>
                                                     <InputGroupAddon align="inline-end">
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
@@ -232,6 +239,9 @@ const OptionPositionBuilder: React.FC = () => {
                                                         </DropdownMenu>
                                                     </InputGroupAddon>
                                                     <InputGroupInput placeholder="30" className="w-20" type="number" />
+                                                    <InputGroupAddon>
+                                                        <InputGroupText>Qty:</InputGroupText>
+                                                    </InputGroupAddon>
                                                     <InputGroupAddon align="inline-end">
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
@@ -270,8 +280,8 @@ const OptionPositionBuilder: React.FC = () => {
                     <Separator className="flex-1" />
                 </div>
                 <div className="flex items-center space-x-2">
-                    <Switch id="exitConditions" />
-                    <Label htmlFor="exitConditions">Pre Punch SL</Label>
+                    <Checkbox id="prepunchsl" />
+                    <Label htmlFor="prepunchsl">Pre Punch SL</Label>
                 </div>
             </CardContent>
         </Card>
