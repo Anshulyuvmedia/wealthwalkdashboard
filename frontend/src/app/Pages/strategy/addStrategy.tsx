@@ -1,3 +1,4 @@
+// src/components/AddStrategy.tsx
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,51 +11,17 @@ import Instruments from "@/components/strategycomponets/Instruments";
 import OrderSettings from "@/components/strategycomponets/OrderSettings";
 import OptionPositionBuilder from "@/components/strategycomponets/OptionPositionBuilder";
 import RiskManagement from "@/components/strategycomponets/RiskManagement";
-import { Ban, Trash2 } from "lucide-react";
+import { Ban, RotateCcw } from "lucide-react";
 import OrderLegs from "@/components/strategycomponets/OrderLegs";
 import Conditions from "@/components/strategycomponets/Conditions";
-// Interfaces for existing components (from previous code)
-interface OrderSettingsData {
-    orderType: string;
-    startTime: string;
-    squareOff: string;
-    days: string[];
-    transactionType?: string;
-    chartType?: string;
-    interval?: string;
-}
-
-interface OrderLegsData {
-    advanceFeatures: {
-        moveSLToCost: boolean;
-        exitAllOnSLTgt: boolean;
-        prePunchSL: boolean;
-        premiumDifference: { enabled: boolean };
-        waitAndTrade: { enabled: boolean };
-        reEntryExecute: { enabled: boolean };
-        trailSL: { enabled: boolean };
-    };
-    legs: any[];
-}
-
-// Placeholder interfaces for components not provided
-// interface EntryConditionsData {
-//     indicators: string[]; // e.g., ["RSI", "MA"]
-//     conditions: { indicator: string; operator: string; value: string }[]; // e.g., [{ indicator: "RSI", operator: ">", value: "70" }]
-// }
-
-// interface ExitConditionsData {
-//     exitRules: { type: string; value: string }[]; // e.g., [{ type: "profit_target", value: "5%" }]
-// }
-
-// interface OptionPositionBuilderData {
-//     positions: { type: string; strike: string; qty: number }[]; // e.g., [{ type: "call", strike: "45000", qty: 1 }]
-// }
+import { toast } from "sonner";
+import type { StrategyPayload, Condition, OrderSettingsData, OrderLegsData, OptionPositionBuilderData, EntryConditionsData, ExitConditionsData, RiskManagementData, InstrumentItem } from "./strategyTypes";
+import { apiService } from "./apiservice";
 
 const AddStrategy: React.FC = () => {
     const navigate = useNavigate();
 
-    // State for all components
+    // State
     const [strategyType, setStrategyType] = useState<"timebased" | "indicatorbased">("timebased");
     const [strategyName, setStrategyName] = useState<string>("");
     const [instruments, setInstruments] = useState<InstrumentItem[]>([]);
@@ -63,10 +30,13 @@ const AddStrategy: React.FC = () => {
         startTime: "09:15",
         squareOff: "03:15",
         days: [],
+        transactionType: "bothside",
+        chartType: "heikinashi",
+        interval: "10",
     });
     const [selectedTemplate, setSelectedTemplate] = useState<string>("");
     const [orderLegs, setOrderLegs] = useState<OrderLegsData | null>(null);
-    const [riskManagementData, setRiskManagementData] = useState({
+    const [riskManagementData, setRiskManagementData] = useState<RiskManagementData>({
         profit: "",
         loss: "",
         total: "",
@@ -76,28 +46,14 @@ const AddStrategy: React.FC = () => {
         trailProfit: { everyIncrease: "", trailProfitBy: "" },
         lockAndTrail: { ifProfit: "", profitAt: "", everyIncrease: "", trailProfitBy: "" },
     });
-    // const [entryConditions, setEntryConditions] = useState<EntryConditionsData>({
-    //     indicators: [],
-    //     conditions: [],
-    // });
-    // const [exitConditions, setExitConditions] = useState<ExitConditionsData>({
-    //     exitRules: [],
-    // });
-    // const [optionPositionBuilder, setOptionPositionBuilder] = useState<OptionPositionBuilderData>({
-    //     positions: [],
-    // });
+    const [entryConditions, setEntryConditions] = useState<EntryConditionsData>({ conditions: [] });
+    const [exitConditions, setExitConditions] = useState<ExitConditionsData>({ conditions: [], isEnabled: false });
+    const [optionPositionBuilder, setOptionPositionBuilder] = useState<OptionPositionBuilderData>({ positions: [] });
 
-    // Memoize handleOrderSettingsChange
+    // Handlers
     const handleOrderSettingsChange = useCallback((data: OrderSettingsData) => {
-        setOrderSettings((prev) => {
-            // Only update if data has changed to avoid unnecessary re-renders
-            if (JSON.stringify(prev) !== JSON.stringify(data)) {
-                // console.log('AddStrategy orderSettings:', data);
-                return data;
-            }
-            return prev;
-        });
-    }, [])
+        setOrderSettings((prev) => (JSON.stringify(prev) !== JSON.stringify(data) ? data : prev));
+    }, []);
 
     const handleTemplateSelect = useCallback((template: string) => {
         setSelectedTemplate(template);
@@ -112,77 +68,146 @@ const AddStrategy: React.FC = () => {
     }, []);
 
     const handleRiskManagementChange = useCallback((field: string, value: string) => {
-        setRiskManagementData((prev) => ({
-            ...prev,
-            [field]: value,
-        }));
+        setRiskManagementData((prev) => ({ ...prev, [field]: value }));
     }, []);
 
     const handleTrailingTypeChange = useCallback((value: string) => {
-        setRiskManagementData((prev) => ({
-            ...prev,
-            trailingType: value,
-        }));
+        setRiskManagementData((prev) => ({ ...prev, trailingType: value }));
     }, []);
 
     const handleTrailingDataChange = useCallback((tab: string, field: string, value: string) => {
         setRiskManagementData((prev) => ({
             ...prev,
-            [tab]: {
-                ...prev[tab],
-                [field]: value,
-            },
+            [tab]: { ...prev[tab], [field]: value },
         }));
     }, []);
 
-    // const handleEntryConditionsChange = (data: EntryConditionsData) => {
-    //     setEntryConditions(data);
-    // };
+    const handleEntryConditionsChange = useCallback((data: { conditions: Condition[] }) => {
+        setEntryConditions({ conditions: data.conditions });
+    }, []);
 
-    // const handleExitConditionsChange = (data: ExitConditionsData) => {
-    //     setExitConditions(data);
-    // };
+    const handleExitConditionsChange = useCallback((data: { conditions: Condition[]; isEnabled?: boolean }) => {
+        setExitConditions({ conditions: data.conditions, isEnabled: data.isEnabled ?? false });
+    }, []);
 
-    // const handleOptionPositionBuilderChange = (data: OptionPositionBuilderData) => {
-    //     setOptionPositionBuilder(data);
-    // };
+    const handleOptionPositionBuilderChange = useCallback((data: OptionPositionBuilderData) => {
+        setOptionPositionBuilder(data);
+    }, []);
 
-    // Form submission
-    const handleSubmit = (e: React.FormEvent) => {
+    const resetForm = useCallback(() => {
+        setStrategyName("");
+        setStrategyType("timebased");
+        setInstruments([]);
+        setOrderSettings({
+            orderType: "MIS",
+            startTime: "09:15",
+            squareOff: "03:15",
+            days: [],
+            transactionType: "bothside",
+            chartType: "heikinashi",
+            interval: "10",
+        });
+        setSelectedTemplate("");
+        setOrderLegs(null);
+        setOptionPositionBuilder({ positions: [] });
+        setEntryConditions({ conditions: [] });
+        setExitConditions({ conditions: [], isEnabled: false });
+        setRiskManagementData({
+            profit: "",
+            loss: "",
+            total: "",
+            time: "",
+            trailingType: "notrailing",
+            lockFixProfit: { ifProfit: "", profitAt: "" },
+            trailProfit: { everyIncrease: "", trailProfitBy: "" },
+            lockAndTrail: { ifProfit: "", profitAt: "", everyIncrease: "", trailProfitBy: "" },
+        });
+        toast.success("Form reset successfully!");
+    }, []);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Basic validation
-        if (!strategyName) {
-            alert("Please enter a strategy name.");
+        // Validation
+        if (!strategyName.trim()) {
+            toast.error("Please enter a valid strategy name.");
             return;
         }
         if (instruments.length === 0) {
-            alert("Please select at least one instrument.");
+            toast.error("Please select at least one instrument.");
             return;
         }
-        if (strategyType === "timebased" && !orderLegs) {
-            alert("Please configure order legs for time-based strategy.");
+        if (instruments.some((inst) => inst.qty <= 0)) {
+            toast.error("Instrument quantities must be greater than zero.");
             return;
         }
-        // if (strategyType === "indicatorbased" && entryConditions.conditions.length === 0) {
-        //     alert("Please configure entry conditions for indicator-based strategy.");
-        //     return;
-        // }
+        if (orderSettings.startTime >= orderSettings.squareOff) {
+            toast.error("Start time must be before square-off time.");
+            return;
+        }
+        if (strategyType === "timebased" && (!orderLegs || orderLegs.legs.length === 0)) {
+            toast.error("Please configure at least one order leg for time-based strategy.");
+            return;
+        }
+        if (strategyType === "indicatorbased") {
+            if (optionPositionBuilder.positions.length === 0) {
+                toast.error("Please configure at least one position in Option Position Builder.");
+                return;
+            }
+            if (optionPositionBuilder.positions.some((pos) => pos.qty <= 0)) {
+                toast.error("Position quantities must be greater than zero.");
+                return;
+            }
+            if (entryConditions.conditions.length === 0) {
+                toast.error("Please configure at least one entry condition for indicator-based strategy.");
+                return;
+            }
+            if (
+                entryConditions.conditions.some(
+                    (cond) =>
+                        !cond.longIndicator ||
+                        !cond.longComparator ||
+                        !cond.shortIndicator ||
+                        !cond.shortComparator
+                )
+            ) {
+                toast.error("Please select valid indicators and comparators for entry conditions.");
+                return;
+            }
+            if (
+                exitConditions.isEnabled &&
+                exitConditions.conditions.some(
+                    (cond) =>
+                        !cond.longIndicator ||
+                        !cond.longComparator ||
+                        !cond.shortIndicator ||
+                        !cond.shortComparator
+                )
+            ) {
+                toast.error("Please select valid indicators and comparators for exit conditions.");
+                return;
+            }
+        }
 
-        const payload = {
+        const payload: StrategyPayload = {
             strategyName,
             strategyType,
             instruments,
             orderSettings,
             orderLegs: strategyType === "timebased" ? orderLegs : null,
+            optionPositionBuilder: strategyType === "indicatorbased" ? optionPositionBuilder : null,
+            entryConditions: strategyType === "indicatorbased" ? entryConditions : null,
+            exitConditions: strategyType === "indicatorbased" ? exitConditions : null,
             riskManagement: riskManagementData,
-            // entryConditions: strategyType === "indicatorbased" ? entryConditions : null,
-            // exitConditions: strategyType === "indicatorbased" ? exitConditions : null,
-            // optionPositionBuilder: strategyType === "indicatorbased" ? optionPositionBuilder : null,
         };
 
-        console.log("🚀 Strategy Submission:", payload);
-        // Replace with API call or other save logic
+        try {
+            await apiService.createStrategy(payload);
+            navigate("/strategy");
+        } catch (error) {
+            console.error("Error saving strategy:", error);
+            toast.error(error.message || "Failed to save strategy.");
+        }
     };
 
     return (
@@ -219,11 +244,12 @@ const AddStrategy: React.FC = () => {
                                 </Button>
                                 <Button
                                     type="button"
-                                    variant="destructive"
+                                    variant="outline"
+                                    onClick={resetForm}
                                     className="cursor-pointer"
                                 >
-                                    <Trash2 size={16} className="text-white" />
-                                    Delete
+                                    <RotateCcw size={16} className="text-white" />
+                                    Reset
                                 </Button>
                             </div>
                         </div>
@@ -240,9 +266,17 @@ const AddStrategy: React.FC = () => {
                             <OrderLegs selectedTemplate={selectedTemplate} onLegsChange={handleOrderLegsChange} />
                         ) : (
                             <>
-                                <Conditions orderSettings={orderSettings} type="entry" />
-                                <Conditions orderSettings={orderSettings} type="exit" />
-                                <OptionPositionBuilder />
+                                <Conditions
+                                    orderSettings={orderSettings}
+                                    type="entry"
+                                    onConditionsChange={handleEntryConditionsChange}
+                                />
+                                <Conditions
+                                    orderSettings={orderSettings}
+                                    type="exit"
+                                    onConditionsChange={handleExitConditionsChange}
+                                />
+                                <OptionPositionBuilder onPositionsChange={handleOptionPositionBuilderChange} />
                             </>
                         )}
                         <RiskManagement

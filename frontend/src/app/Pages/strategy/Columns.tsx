@@ -1,9 +1,9 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import  { apiService } from "./types";
+import { apiService } from "./apiservice";
 import { toast } from "sonner";
-import type { TdStrategy } from "./types";
+import type { TdStrategy } from "./strategyTypes";
 import { IconTrashX, IconEdit } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
@@ -19,34 +19,28 @@ export const columns: ColumnDef<TdStrategy>[] = [
         accessorKey: "Duration",
         header: "Start Time",
         cell: ({ row }) => (
-            <span className="text-gray-300 dark:text-gray-400">{row.original.Duration}</span>
+            <span className="text-gray-300 dark:text-gray-400">{row.original.orderSettings?.startTime}</span>
         ),
     },
     {
         accessorKey: "durationValue",
         header: "End Time",
         cell: ({ row }) => (
-            <span className="text-gray-300 dark:text-gray-400">{row.original.durationValue}</span>
+            <span className="text-gray-300 dark:text-gray-400">{row.original.orderSettings?.squareOff}</span>
         ),
     },
     {
-        accessorKey: "fetures",
+        accessorKey: "features",
         header: "Segment Type",
         cell: ({ row }) => (
-            <ul className="list-disc pl-4 space-y-1 text-gray-300 dark:text-gray-400">
-                {row.original.fetures
-                    .filter((feature) => feature.enabled)
-                    .map((feature, index) => (
-                        <li key={index}>{feature.title}</li>
-                    ))}
-            </ul>
+            <span className="text-gray-300 dark:text-gray-400">{row.original.instruments[0]?.type?.toUpperCase() || 'N/A'}</span>
         ),
     },
     {
         accessorKey: "pricing",
         header: "Strategy Type",
         cell: ({ row }) => (
-            <span className="text-gray-100 dark:text-gray-200 font-medium">₹ {row.original.pricing.toFixed(2)}</span>
+            <span className="text-gray-100 dark:text-gray-200 font-medium">{row.original.features?.toUpperCase()}</span>
         ),
     },
     {

@@ -134,5 +134,9 @@
   "TdSubscription": {
     "dataSource": "mongoDB",
     "public": true
+  },
+  "TdStrategy": {
+    "dataSource": "mongoDB", 
+    "public": true
   }
 }

@@ -1,0 +1,108 @@
+{
+    "name": "TdStrategy",
+    "plural": "TdStrategys",
+    "base": "PersistedModel",
+    "idInjection": true,
+    "options": {
+        "validateUpsert": true
+    },
+    "properties": {
+        "strategyName": {
+            "type": "string",
+            "required": true
+        },
+        "Duration": {
+            "type": "string",
+            "default": ""
+        },
+        "durationValue": {
+            "type": "number",
+            "required": true
+        },
+        "features":  {
+            "type": "string",
+            "required": true
+        },
+        "pricing": {
+            "type": "number",
+            "default": 0
+        },
+        "createdAt": {
+            "type": "date",
+            "defaultFn": "now"
+        },
+        "updateAt": {
+            "type": "date",
+            "defaultFn": "now"
+        },
+        "instruments": {
+            "type": "any",
+            "required": false,
+            "description": "Array of InstrumentItem objects"
+        },
+        "orderSettings": {
+            "type": "any",
+            "required": false,
+            "description": "OrderSettingsData object"
+        },
+        "orderLegs": {
+            "type": "any",
+            "required": false,
+            "description": "OrderLegsData object or null"
+        },
+        "optionPositionBuilder": {
+            "type": "any",
+            "required": false,
+            "description": "OptionPositionBuilderData object or null"
+        },
+        "entryConditions": {
+            "type": "any",
+            "required": false,
+            "description": "EntryConditionsData object or null"
+        },
+        "exitConditions": {
+            "type": "any",
+            "required": false,
+            "description": "ExitConditionsData object or null"
+        },
+        "riskManagement": {
+            "type": "any",
+            "required": false,
+            "description": "RiskManagementData object"
+        },
+        "userId": {
+            "type": "string",
+            "required": true,
+            "description": "ID of the TdUsers who created the strategy"
+        }
+    },
+    "validations": [],
+    "relations": {
+        "user": {
+            "type": "belongsTo",
+            "model": "TdUsers",
+            "foreignKey": "userId"
+        }
+    },
+    "acls": [
+        {
+            "accessType": "*",
+            "principalType": "ROLE",
+            "principalId": "admin",
+            "permission": "ALLOW"
+        },
+        {
+            "accessType": "*",
+            "principalType": "ROLE",
+            "principalId": "$authenticated",
+            "permission": "ALLOW"
+        },
+        {
+            "accessType": "*",
+            "principalType": "ROLE",
+            "principalId": "$unauthenticated",
+            "permission": "DENY"
+        }
+    ],
+    "methods": []
+}

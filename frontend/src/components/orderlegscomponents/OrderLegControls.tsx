@@ -18,12 +18,12 @@ import { AdvanceFeatureInputs } from "@/components/orderlegscomponents/AdvanceFe
 import { Separator } from "@/components/ui/separator";
 
 interface OrderLegControlsProps {
-    isBuy: boolean;
-    setIsBuy: (value: boolean) => void;
-    isCE: boolean;
-    setIsCE: (value: boolean) => void;
-    isWeekly: boolean;
-    setIsWeekly: (value: boolean) => void;
+    isBuy: "Buy" | "Sell";
+    setIsBuy: (value: "Buy" | "Sell") => void;
+    isCE: "CE" | "PE";
+    setIsCE: (value: "CE" | "PE") => void;
+    isWeekly: "Weekly" | "Monthly";
+    setIsWeekly: (value: "Weekly" | "Monthly") => void;
     firstSelection: string;
     setFirstSelection: (value: string) => void;
     secondSelection: string;
@@ -144,7 +144,7 @@ export const OrderLegControls: React.FC<OrderLegControlsProps> = ({
                             <div className="space-y-2">
                                 <div className="flex gap-2 w-full">
                                     <div
-                                        onClick={() => setIsBuy(!isBuy)}
+                                        onClick={() => setIsBuy(isBuy === "Buy" ? "Sell" : "Buy")}
                                         className={`flex cursor-pointer items-center text-sm border bg-dark rounded-md px-3 py-1 ${isBuy ? "border-green-600" : "border-red-600"}`}
                                         role="button"
                                         aria-label={isBuy ? "Switch to Sell" : "Switch to Buy"}
@@ -174,7 +174,7 @@ export const OrderLegControls: React.FC<OrderLegControlsProps> = ({
                                         </InputGroup>
                                     </div>
                                     <div
-                                        onClick={() => setIsCE(!isCE)}
+                                        onClick={() => setIsCE(isCE === "CE" ? "PE" : "CE")}
                                         className={`flex cursor-pointer items-center text-sm border bg-dark rounded-md px-3 py-1 ${isCE ? "border-green-600" : "border-red-600"}`}
                                     >
                                         <span className={isCE ? "text-green-600" : "text-red-600"}>
@@ -183,7 +183,7 @@ export const OrderLegControls: React.FC<OrderLegControlsProps> = ({
                                         <ChevronsDownUp className={isCE ? "text-green-600" : "text-red-600"} size={16} />
                                     </div>
                                     <div
-                                        onClick={() => setIsWeekly(!isWeekly)}
+                                        onClick={() => setIsWeekly(isWeekly === "Weekly" ? "Monthly" : "Weekly")}
                                         className={`flex cursor-pointer items-center text-sm border bg-dark rounded-md px-3 py-1 ${isWeekly ? "border-yellow-600" : "border-purple-600"}`}
                                         role="button"
                                         aria-label={isWeekly ? "Switch to Monthly" : "Switch to Weekly"}

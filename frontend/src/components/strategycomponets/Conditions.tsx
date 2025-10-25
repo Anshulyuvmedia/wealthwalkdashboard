@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -52,9 +52,10 @@ interface OrderSettingsData {
 interface ConditionsProps {
     orderSettings: OrderSettingsData;
     type: "entry" | "exit";
+    onConditionsChange: (data: { conditions: Condition[]; isEnabled?: boolean; useCombinedChart?: boolean }) => void;
 }
 
-const Conditions: React.FC<ConditionsProps> = ({ orderSettings, type }) => {
+const Conditions: React.FC<ConditionsProps> = ({ orderSettings, type, onConditionsChange }) => {
     const [conditions, setConditions] = useState<Condition[]>([
         {
             id: crypto.randomUUID(),
@@ -72,7 +73,7 @@ const Conditions: React.FC<ConditionsProps> = ({ orderSettings, type }) => {
         },
     ]);
     const [isExitConditionsEnabled, setIsExitConditionsEnabled] = useState<boolean>(false);
-
+    const [useCombinedChart, setUseCombinedChart] = useState<boolean>(false);
     const frameworks = [
         { value: "select-indicator", label: "Select Indicator" },
         { value: "moving-average", label: "Moving Average", type: "input" },
@@ -180,6 +181,15 @@ const Conditions: React.FC<ConditionsProps> = ({ orderSettings, type }) => {
         return defaultParams;
     };
 
+    // Notify parent of changes
+    useEffect(() => {
+        onConditionsChange({
+            conditions,
+            useCombinedChart: type === "entry" ? useCombinedChart : undefined,
+            isEnabled: type === "exit" ? isExitConditionsEnabled : undefined,
+        });
+    }, [conditions, isExitConditionsEnabled, useCombinedChart, onConditionsChange, type])
+
     const addCondition = () => {
         setConditions([
             ...conditions,
@@ -205,14 +215,11 @@ const Conditions: React.FC<ConditionsProps> = ({ orderSettings, type }) => {
     };
 
     const updateCondition = (id: string, updates: Partial<Condition>) => {
-        // console.log('Updating condition:', id, updates);
-        setConditions((prevConditions) => {
-            const newConditions = prevConditions.map((condition) =>
+        setConditions((prevConditions) =>
+            prevConditions.map((condition) =>
                 condition.id === id ? { ...condition, ...updates } : condition
-            );
-            // console.log('New conditions state:', newConditions); // Debug
-            return newConditions;
-        });
+            )
+        );
     };
 
     return (
@@ -223,7 +230,7 @@ const Conditions: React.FC<ConditionsProps> = ({ orderSettings, type }) => {
                         <CardTitle>{type === "entry" ? "Entry Conditions" : "Exit Conditions"}</CardTitle>
                         {type === "entry" ? (
                             <div className="flex items-center space-x-2 ms-4">
-                                <Switch id="combinedChart" />
+                                <Switch id="combinedChart" checked={useCombinedChart} onCheckedChange={setUseCombinedChart} />
                                 <Label htmlFor="combinedChart">Use Combined Chart</Label>
                                 <Tooltip>
                                     <TooltipContent>

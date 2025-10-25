@@ -31,9 +31,9 @@ import { getTemplateLegs } from "@/constants/templateConfigs";
 
 interface OrderLeg {
     id: string;
-    isBuy: boolean;
-    isCE: boolean;
-    isWeekly: boolean;
+    isBuy: "Buy" | "Sell";
+    isCE: "CE" | "PE";
+    isWeekly: "Weekly" | "Monthly";
     firstSelection: string;
     secondSelection: string;
     tpSelection: string;
@@ -130,9 +130,9 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange })
             setLegs([
                 {
                     id: uuidv4(),
-                    isBuy: true,
-                    isCE: true,
-                    isWeekly: true,
+                    isBuy: "Buy",
+                    isCE: "CE",
+                    isWeekly: "Weekly",
                     firstSelection: "ATM pt",
                     secondSelection: "ATM",
                     tpSelection: "TP pt",
@@ -168,9 +168,9 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange })
             ...legs,
             {
                 id: uuidv4(),
-                isBuy: true,
-                isCE: true,
-                isWeekly: true,
+                isBuy: "Buy",
+                isCE: "CE",
+                isWeekly: "Weekly",
                 firstSelection: "ATM pt",
                 secondSelection: "ATM",
                 tpSelection: "TP pt",

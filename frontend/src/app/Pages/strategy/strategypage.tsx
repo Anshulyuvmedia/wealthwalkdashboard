@@ -6,8 +6,8 @@ import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { DataTable } from "./DataTable";
 import { columns } from "./Columns";
-import type { TdStrategy } from "./types";
-import { apiService } from "./types";
+import type { TdStrategy } from "./strategyTypes";
+import { apiService } from "./apiservice";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
