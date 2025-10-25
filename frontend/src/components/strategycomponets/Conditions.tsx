@@ -53,25 +53,16 @@ interface ConditionsProps {
     orderSettings: OrderSettingsData;
     type: "entry" | "exit";
     onConditionsChange: (data: { conditions: Condition[]; isEnabled?: boolean; useCombinedChart?: boolean }) => void;
+    initialConditions?: Condition[]; // Pre-populated data from API
 }
 
-const Conditions: React.FC<ConditionsProps> = ({ orderSettings, type, onConditionsChange }) => {
-    const [conditions, setConditions] = useState<Condition[]>([
-        {
-            id: crypto.randomUUID(),
-            longIndicator: "",
-            longParams: {},
-            longComparator: "",
-            longSecondIndicator: "",
-            longSecondParams: {},
-            shortIndicator: "",
-            shortParams: {},
-            shortComparator: "",
-            shortSecondIndicator: "",
-            shortSecondParams: {},
-            operator: "and",
-        },
-    ]);
+const Conditions: React.FC<ConditionsProps> = ({
+    orderSettings,
+    type,
+    onConditionsChange,
+    initialConditions = [],
+}) => {
+    const [conditions, setConditions] = useState<Condition[]>([]);
     const [isExitConditionsEnabled, setIsExitConditionsEnabled] = useState<boolean>(false);
     const [useCombinedChart, setUseCombinedChart] = useState<boolean>(false);
     const frameworks = [
@@ -181,6 +172,30 @@ const Conditions: React.FC<ConditionsProps> = ({ orderSettings, type, onConditio
         return defaultParams;
     };
 
+    // Initialize with API data or default condition
+    useEffect(() => {
+        if (initialConditions.length > 0) {
+            setConditions(initialConditions);
+        } else if (conditions.length === 0) {
+            setConditions([
+                {
+                    id: crypto.randomUUID(),
+                    longIndicator: "",
+                    longParams: {},
+                    longComparator: "",
+                    longSecondIndicator: "",
+                    longSecondParams: {},
+                    shortIndicator: "",
+                    shortParams: {},
+                    shortComparator: "",
+                    shortSecondIndicator: "",
+                    shortSecondParams: {},
+                    operator: "and",
+                },
+            ]);
+        }
+    }, [initialConditions]);
+
     // Notify parent of changes
     useEffect(() => {
         onConditionsChange({
@@ -188,7 +203,7 @@ const Conditions: React.FC<ConditionsProps> = ({ orderSettings, type, onConditio
             useCombinedChart: type === "entry" ? useCombinedChart : undefined,
             isEnabled: type === "exit" ? isExitConditionsEnabled : undefined,
         });
-    }, [conditions, isExitConditionsEnabled, useCombinedChart, onConditionsChange, type])
+    }, [conditions, isExitConditionsEnabled, useCombinedChart, onConditionsChange, type]);
 
     const addCondition = () => {
         setConditions([

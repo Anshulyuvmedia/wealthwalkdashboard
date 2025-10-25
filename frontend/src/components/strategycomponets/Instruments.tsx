@@ -1,7 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
-//  Instruments.tsx
-// ─────────────────────────────────────────────────────────────────────────────
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { PlusCircle, Search, X } from "lucide-react";
 import { toast } from "sonner";
@@ -13,10 +10,20 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { InputGroup, InputGroupAddon, InputGroupInput, } from "@/components/ui/input-group";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
+
+interface InstrumentItem {
+    id: number;
+    type: string;
+    name: string;
+    price: number;
+    exchange: string;
+    lot?: number;
+    qty?: number;
+}
 
 const dummyInstruments = [
     { id: 1, name: "BANK NIFTY", type: "options", price: 0.0, exchange: "NSE", lotSize: 25 },
@@ -40,37 +47,35 @@ const dummyInstruments = [
     { id: 18, name: "SILVER", type: "mcx", price: 0.0, exchange: "MCX" },
 ];
 
-export interface InstrumentItem {
-    id: number;
-    type: string;
-    name: string;
-    price: number;
-    exchange: string;
-    qty?: number;      // for non-options
-    lot?: number;      // for options (fixed lot size)
-}
-
 /* ──────────────────────────────────────────────────────────────────────── */
 interface InstrumentsProps {
     strategyType: "timebased" | "indicatorbased";
     /** Called **every time** the selection changes */
     onInstrumentsChange: (instruments: InstrumentItem[]) => void;
+    initialInstruments?: InstrumentItem[]; // Pre-populated data from API
 }
 
 /* ──────────────────────────────────────────────────────────────────────── */
 const Instruments: React.FC<InstrumentsProps> = ({
     strategyType,
     onInstrumentsChange,
+    initialInstruments = [],
 }) => {
     const [marketType, setMarketType] = useState("options");
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedInstruments, setSelectedInstruments] = useState<InstrumentItem[]>([]);
-    const [open, setOpen] = useState(false);
 
-    /* ────── keep parent in sync ────── */
+    // Initialize with API data or empty array only if different
     useEffect(() => {
-        onInstrumentsChange(selectedInstruments);
-    }, [selectedInstruments, onInstrumentsChange]);
+        if (JSON.stringify(selectedInstruments) !== JSON.stringify(initialInstruments)) {
+            setSelectedInstruments(initialInstruments);
+        }
+    }, [initialInstruments]);
+
+    // Force “options” when time-based
+    useEffect(() => {
+        if (strategyType === "timebased") setMarketType("options");
+    }, [strategyType]);
 
     const filteredInstruments = useMemo(() => {
         return dummyInstruments.filter(
@@ -80,8 +85,8 @@ const Instruments: React.FC<InstrumentsProps> = ({
         );
     }, [marketType, searchTerm]);
 
-    const handleSelectInstrument = (instrument: typeof dummyInstruments[0]) => {
-        // ---- validation (exactly what you already had) ----
+    const handleSelectInstrument = useCallback((instrument: typeof dummyInstruments[0]) => {
+        // Validation rules
         if (instrument.type === "options" && selectedInstruments.length > 0) {
             toast.error("You can’t add Options when other instruments are already selected.");
             return;
@@ -105,26 +110,25 @@ const Instruments: React.FC<InstrumentsProps> = ({
                     ? { lot: instrument.lotSize ?? 25 }
                     : { qty: 1 }),
             };
-            setSelectedInstruments((prev) => [...prev, newItem]);
+            const updatedInstruments = [...selectedInstruments, newItem];
+            setSelectedInstruments(updatedInstruments);
+            onInstrumentsChange(updatedInstruments); // Sync with parent
         }
-        setOpen(false);
-        toast.success(`${instrument.name} added.`);
-    };
+    }, [selectedInstruments, onInstrumentsChange]);
 
-    const handleRemoveInstrument = (id: number) => {
-        setSelectedInstruments((prev) => prev.filter((i) => i.id !== id));
-    };
+    const handleRemoveInstrument = useCallback((id: number) => {
+        const updatedInstruments = selectedInstruments.filter((i) => i.id !== id);
+        setSelectedInstruments(updatedInstruments);
+        onInstrumentsChange(updatedInstruments); // Sync with parent
+    }, [selectedInstruments, onInstrumentsChange]);
 
-    const handleQtyChange = (id: number, qty: number) => {
-        setSelectedInstruments((prev) =>
-            prev.map((i) => (i.id === id ? { ...i, qty: qty < 1 ? 1 : qty } : i))
+    const handleQtyChange = useCallback((id: number, qty: number) => {
+        const updatedInstruments = selectedInstruments.map((i) =>
+            i.id === id ? { ...i, qty: qty < 1 ? 1 : qty } : i
         );
-    };
-
-    /* Force “options” when time-based */
-    useEffect(() => {
-        if (strategyType === "timebased") setMarketType("options");
-    }, [strategyType]);
+        setSelectedInstruments(updatedInstruments);
+        onInstrumentsChange(updatedInstruments); // Sync with parent
+    }, [selectedInstruments, onInstrumentsChange]);
 
     return (
         <Card>
@@ -182,7 +186,7 @@ const Instruments: React.FC<InstrumentsProps> = ({
 
                     {/* Add-button is hidden when an option is already selected */}
                     {!selectedInstruments.some((i) => i.type === "options") && (
-                        <Dialog open={open} onOpenChange={setOpen}>
+                        <Dialog open={false} onOpenChange={(open) => setOpen(open)}>
                             <DialogTrigger asChild>
                                 <div className="w-44 hover:bg-gray-800 hover:text-white hover:shadow-sm p-3 rounded-lg border-2 border-dashed flex flex-col justify-center items-center shadow-md cursor-pointer transition-all">
                                     <PlusCircle className="mb-2 h-8 w-8" />

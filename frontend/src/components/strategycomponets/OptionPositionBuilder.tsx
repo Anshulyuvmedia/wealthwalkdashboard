@@ -33,28 +33,14 @@ interface OptionPositionBuilderData {
 
 interface OptionPositionBuilderProps {
     onPositionsChange: (data: OptionPositionBuilderData) => void;
+    initialPositions?: OptionLeg[]; // Pre-populated data from API
 }
 
-const OptionPositionBuilder: React.FC<OptionPositionBuilderProps> = ({ onPositionsChange }) => {
-    const [legs, setLegs] = useState<OptionLeg[]>([
-        {
-            id: uuidv4(),
-            longIsCE: "CE",
-            shortIsCE: "PE",
-            isBuy: "Buy",
-            isWeekly: "Weekly",
-            qty: 1,
-            firstSelection: "ATM pt",
-            secondSelection: "ATM",
-            tpSelection: "TP pt",
-            tpValue: 30,
-            tpOn: "On Price",
-            slSelection: "SL pt",
-            slValue: 30,
-            slOn: "On Price",
-            prePunchSL: false,
-        },
-    ]);
+const OptionPositionBuilder: React.FC<OptionPositionBuilderProps> = ({
+    onPositionsChange,
+    initialPositions = [],
+}) => {
+    const [legs, setLegs] = useState<OptionLeg[]>([]);
 
     const firstOptions = ["ATM pt", "ATM %", "CP", "CP >=", "CP <="];
     const secondOptions = [
@@ -78,6 +64,33 @@ const OptionPositionBuilder: React.FC<OptionPositionBuilderProps> = ({ onPositio
     const tpOptions = ["TP pt", "TP %"];
     const slOptions = ["SL pt", "SL %"];
     const priceOptions = ["On Price", "On Close"];
+
+    // Initialize with API data or default leg
+    useEffect(() => {
+        if (initialPositions.length > 0) {
+            setLegs(initialPositions);
+        } else if (legs.length === 0) {
+            setLegs([
+                {
+                    id: uuidv4(),
+                    longIsCE: "CE",
+                    shortIsCE: "PE",
+                    isBuy: "Buy",
+                    isWeekly: "Weekly",
+                    qty: 1,
+                    firstSelection: "ATM pt",
+                    secondSelection: "ATM",
+                    tpSelection: "TP pt",
+                    tpValue: 30,
+                    tpOn: "On Price",
+                    slSelection: "SL pt",
+                    slValue: 30,
+                    slOn: "On Price",
+                    prePunchSL: false,
+                },
+            ]);
+        }
+    }, [initialPositions]);
 
     // Notify parent of changes
     useEffect(() => {

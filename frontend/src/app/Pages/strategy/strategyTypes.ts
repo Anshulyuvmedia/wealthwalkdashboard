@@ -143,7 +143,7 @@ export interface TdStrategy {
     strategyName: string;
     Duration: string;
     durationValue: number;
-    features: { title: string; enabled: boolean }[]; // Updated to match expected structure
+    strategyType: string;
     pricing: number;
     createdAt: string;
     updateAt: string;

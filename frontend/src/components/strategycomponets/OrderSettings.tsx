@@ -22,6 +22,7 @@ interface OrderSettingsProps {
     template: string;
     onTemplateSelect: (template: string) => void;
     onSettingsChange: (data: OrderSettingsData) => void;
+    initialSettings?: OrderSettingsData; // Pre-populated data from API
 }
 
 const OrderSettings: React.FC<OrderSettingsProps> = ({
@@ -29,14 +30,17 @@ const OrderSettings: React.FC<OrderSettingsProps> = ({
     template,
     onTemplateSelect,
     onSettingsChange,
+    initialSettings,
 }) => {
-    const [orderType, setOrderType] = useState<string>("MIS");
-    const [startTime, setStartTime] = useState<string>("09:15");
-    const [squareOff, setSquareOff] = useState<string>("15:15");
-    const [days, setDays] = useState<string[]>([]);
-    const [transactionType, setTransactionType] = useState<string>("bothside");
-    const [chartType, setChartType] = useState<string>("candle");
-    const [interval, setInterval] = useState<string>("1");
+    const [orderType, setOrderType] = useState<string>(initialSettings?.orderType || "MIS");
+    const [startTime, setStartTime] = useState<string>(initialSettings?.startTime || "09:15");
+    const [squareOff, setSquareOff] = useState<string>(initialSettings?.squareOff || "15:15");
+    const [days, setDays] = useState<string[]>(initialSettings?.days || []);
+    const [transactionType, setTransactionType] = useState<string>(
+        initialSettings?.transactionType || "bothside"
+    );
+    const [chartType, setChartType] = useState<string>(initialSettings?.chartType || "candle");
+    const [interval, setInterval] = useState<string>(initialSettings?.interval || "1");
 
     const settingsData = useMemo(
         () => ({
@@ -53,9 +57,20 @@ const OrderSettings: React.FC<OrderSettingsProps> = ({
         [orderType, startTime, squareOff, days, transactionType, chartType, interval, strategyType]
     );
 
+    // Sync with parent only if settings have changed
     useEffect(() => {
-        onSettingsChange(settingsData);
-    }, [settingsData, onSettingsChange]);
+        const currentSettings = {
+            orderType,
+            startTime,
+            squareOff,
+            days,
+            ...(strategyType === "indicatorbased" && { transactionType, chartType, interval }),
+        };
+        const isEqual = JSON.stringify(currentSettings) === JSON.stringify(initialSettings);
+        if (!isEqual) {
+            onSettingsChange(settingsData);
+        }
+    }, [settingsData, onSettingsChange, initialSettings, strategyType]);
 
     return (
         <Card>
@@ -140,7 +155,11 @@ const OrderSettings: React.FC<OrderSettingsProps> = ({
                                 >
                                     {["bothside", "onlylong", "onlyshort"].map((type) => (
                                         <ToggleGroupItem key={type} value={type} className="text-xs">
-                                            {type === "bothside" ? "Both Side" : type === "onlylong" ? "Only Long" : "Only Short"}
+                                            {type === "bothside"
+                                                ? "Both Side"
+                                                : type === "onlylong"
+                                                    ? "Only Long"
+                                                    : "Only Short"}
                                         </ToggleGroupItem>
                                     ))}
                                 </ToggleGroup>

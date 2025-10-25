@@ -72,7 +72,7 @@ const transformToTdStrategy = (strategy: StrategyPayload): TdStrategy => {
         strategyName: strategy.strategyName,
         Duration: strategy.orderSettings.days.join(", ") || "None",
         durationValue: strategy.orderSettings.days.length || 0,
-        features:  strategy.strategyType,
+        strategyType:  strategy.strategyType,
         pricing: 0,
         createdAt: new Date().toISOString(),
         updateAt: new Date().toISOString(),

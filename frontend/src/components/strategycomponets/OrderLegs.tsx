@@ -1,5 +1,3 @@
-// src/components/strategycomponets/OrderLegs.tsx (updated)
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrderLegControls } from "@/components/orderlegscomponents/OrderLegControls";
@@ -52,12 +50,26 @@ interface OrderLeg {
     tslTrailBy: string;
 }
 
-interface OrderLegsProps {
-    selectedTemplate: string;
-    onLegsChange: (data: { advanceFeatures: any; legs: any[] }) => void; // New callback
+interface InitialData {
+    advanceFeatures: {
+        moveSLToCost: boolean;
+        exitAllOnSLTgt: boolean;
+        prePunchSL: boolean;
+        premiumDifference: { enabled: boolean };
+        waitAndTrade: { enabled: boolean };
+        reEntryExecute: { enabled: boolean };
+        trailSL: { enabled: boolean };
+    };
+    legs: OrderLeg[];
 }
 
-const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange }) => {
+interface OrderLegsProps {
+    selectedTemplate: string;
+    onLegsChange: (data: { advanceFeatures: any; legs: any[] }) => void;
+    initialData?: InitialData[]; // Expect array of InitialData objects
+}
+
+const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange, initialData }) => {
     const [legs, setLegs] = useState<OrderLeg[]>([]);
     const [moveSLToCost, setMoveSLToCost] = useState(false);
     const [exitAllOnSLTgt, setExitAllOnSLTgt] = useState(false);
@@ -76,8 +88,64 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange })
     const [tempTslMode, setTempTslMode] = useState("TSL %");
     const [tempTslSelection, setTempTslSelection] = useState("TSL pt");
     const [tempTslTrailBy, setTempTslTrailBy] = useState("");
+    const [isInitialized, setIsInitialized] = useState(false); // Track initial setup
 
-    // Notify parent of changes
+    // Initialize state only on first mount or initialData change
+    useEffect(() => {
+        console.log("initialData", initialData);
+        if (!isInitialized && initialData && initialData.length > 0 && initialData[0]?.orderLegs) {
+            const { advanceFeatures, legs: apiLegs } = initialData[0].orderLegs;
+            setLegs(apiLegs || []);
+            setMoveSLToCost(advanceFeatures.moveSLToCost || false);
+            setExitAllOnSLTgt(advanceFeatures.exitAllOnSLTgt || false);
+            setPrePunchSL(advanceFeatures.prePunchSL || false);
+            setPremiumDifference(advanceFeatures.premiumDifference?.enabled || false);
+            setWaitAndTrade(advanceFeatures.waitAndTrade?.enabled || false);
+            setReEntryExecute(advanceFeatures.reEntryExecute?.enabled || false);
+            setTrailSL(advanceFeatures.trailSL?.enabled || false);
+            setIsInitialized(true); // Mark as initialized to prevent re-running
+        } else if (!isInitialized) {
+            const templateLegs = getTemplateLegs(selectedTemplate);
+            if (templateLegs.length > 0) {
+                setLegs(templateLegs);
+            } else {
+                setLegs([
+                    {
+                        id: uuidv4(),
+                        isBuy: "Buy",
+                        isCE: "CE",
+                        isWeekly: "Weekly",
+                        firstSelection: "ATM pt",
+                        secondSelection: "ATM",
+                        tpSelection: "TP pt",
+                        slSelection: "SL pt",
+                        onSelection: "On Price",
+                        onSelectionSec: "On Price",
+                        premiumDiffValue: "",
+                        waitAndTradeValue: "",
+                        waitAndTradeUnit: "⏰ % ↓",
+                        reEntryMode: "ReEntry On Cost",
+                        reEntryValue: "",
+                        executionType: "On Close",
+                        executionTypeSelection: "Combined",
+                        tslMode: "TSL %",
+                        tslSelection: "TSL pt",
+                        tslTrailBy: "",
+                    },
+                ]);
+            }
+            setMoveSLToCost(false);
+            setExitAllOnSLTgt(false);
+            setPrePunchSL(false);
+            setPremiumDifference(false);
+            setWaitAndTrade(false);
+            setReEntryExecute(false);
+            setTrailSL(false);
+            setIsInitialized(true); // Mark as initialized
+        }
+        // Do not call notifyParent() here to avoid initial loop
+    }, [selectedTemplate, initialData]); // Dependencies
+
     const notifyParent = () => {
         const data = {
             advanceFeatures: {
@@ -121,46 +189,6 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange })
         };
         onLegsChange(data);
     };
-
-    useEffect(() => {
-        const templateLegs = getTemplateLegs(selectedTemplate);
-        if (templateLegs.length > 0) {
-            setLegs(templateLegs);
-        } else {
-            setLegs([
-                {
-                    id: uuidv4(),
-                    isBuy: "Buy",
-                    isCE: "CE",
-                    isWeekly: "Weekly",
-                    firstSelection: "ATM pt",
-                    secondSelection: "ATM",
-                    tpSelection: "TP pt",
-                    slSelection: "SL pt",
-                    onSelection: "On Price",
-                    onSelectionSec: "On Price",
-                    premiumDiffValue: "",
-                    waitAndTradeValue: "",
-                    waitAndTradeUnit: "⏰ % ↓",
-                    reEntryMode: "ReEntry On Cost",
-                    reEntryValue: "",
-                    executionType: "On Close",
-                    executionTypeSelection: "Combined",
-                    tslMode: "TSL %",
-                    tslSelection: "TSL pt",
-                    tslTrailBy: "",
-                },
-            ]);
-        }
-        setMoveSLToCost(false);
-        setExitAllOnSLTgt(false);
-        setPrePunchSL(false);
-        setPremiumDifference(false);
-        setWaitAndTrade(false);
-        setReEntryExecute(false);
-        setTrailSL(false);
-        notifyParent();
-    }, [selectedTemplate]);
 
     const handleAddLeg = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -220,48 +248,7 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange })
 
     const handleSaveAll = (e: React.MouseEvent) => {
         e.preventDefault();
-        const payload = {
-            advanceFeatures: {
-                moveSLToCost,
-                exitAllOnSLTgt,
-                prePunchSL,
-                premiumDifference: { enabled: premiumDifference },
-                waitAndTrade: { enabled: waitAndTrade },
-                reEntryExecute: { enabled: reEntryExecute },
-                trailSL: { enabled: trailSL },
-            },
-            legs: legs.map((leg) => ({
-                id: leg.id,
-                isBuy: leg.isBuy,
-                isCE: leg.isCE,
-                isWeekly: leg.isWeekly,
-                firstSelection: leg.firstSelection,
-                secondSelection: leg.secondSelection,
-                tpSelection: leg.tpSelection,
-                slSelection: leg.slSelection,
-                onSelection: leg.onSelection,
-                onSelectionSec: leg.onSelectionSec,
-                advanceFeatures: {
-                    premiumDifference: { value: leg.premiumDiffValue },
-                    waitAndTrade: {
-                        value: leg.waitAndTradeValue,
-                        unit: leg.waitAndTradeUnit,
-                    },
-                    reEntryExecute: {
-                        mode: leg.reEntryMode,
-                        value: leg.reEntryValue,
-                        executionType: leg.executionType,
-                        executionTypeSelection: leg.executionTypeSelection,
-                    },
-                    trailSL: {
-                        mode: leg.tslMode,
-                        values: [leg.tslSelection, leg.tslTrailBy],
-                    },
-                },
-            })),
-        };
-        console.log("🚀 Saved Values:", payload);
-        onLegsChange(payload);
+        notifyParent();
     };
 
     const handleCheckboxChange = (
@@ -291,7 +278,8 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange })
                 });
             }
         }
-        notifyParent();
+        // Notify parent only after state is fully updated
+        setTimeout(() => notifyParent(), 0); // Use setTimeout to defer notification
     };
 
     return (
@@ -402,7 +390,6 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange })
                                                     setReEntryExecute(false);
                                                     setTrailSL(false);
                                                 }
-                                                notifyParent();
                                             }}
                                         />
                                         <Label htmlFor="moveSLToCost">Move SL to Cost</Label>
@@ -417,7 +404,6 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange })
                                                 if (isChecked) {
                                                     setReEntryExecute(false);
                                                 }
-                                                notifyParent();
                                             }}
                                         />
                                         <Label htmlFor="exitAllOnSLTgt">Exit All on SL/Tgt</Label>
@@ -428,7 +414,6 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange })
                                             checked={prePunchSL}
                                             onCheckedChange={(checked) => {
                                                 setPrePunchSL(!!checked);
-                                                notifyParent();
                                             }}
                                             disabled={moveSLToCost}
                                         />
@@ -442,7 +427,6 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange })
                                             checked={waitAndTrade}
                                             onCheckedChange={(checked) => {
                                                 setWaitAndTrade(!!checked);
-                                                notifyParent();
                                             }}
                                             disabled={moveSLToCost}
                                         />
@@ -501,7 +485,7 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange })
                                                         <Button
                                                             onClick={() => {
                                                                 legs.forEach((leg) => updateLeg(leg.id, { premiumDiffValue: tempPremiumDiffValue }));
-                                                                console.log("✅ Premium Difference Saved");
+                                                                setIsPremiumDialogOpen(false);
                                                                 notifyParent();
                                                             }}
                                                         >
@@ -592,7 +576,7 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange })
                                                                         executionTypeSelection: tempExecutionTypeSelection,
                                                                     })
                                                                 );
-                                                                console.log("✅ Re-Entry / Execute Saved");
+                                                                setIsReEntryDialogOpen(false);
                                                                 notifyParent();
                                                             }}
                                                         >
@@ -685,7 +669,7 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange })
                                                                         tslTrailBy: tempTslTrailBy,
                                                                     })
                                                                 );
-                                                                console.log("✅ Trail SL Saved");
+                                                                setIsTrailSLDialogOpen(false);
                                                                 notifyParent();
                                                             }}
                                                         >

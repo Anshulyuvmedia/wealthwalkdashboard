@@ -30,7 +30,7 @@ export const columns: ColumnDef<TdStrategy>[] = [
         ),
     },
     {
-        accessorKey: "features",
+        accessorKey: "strategyType",
         header: "Segment Type",
         cell: ({ row }) => (
             <span className="text-gray-300 dark:text-gray-400">{row.original.instruments[0]?.type?.toUpperCase() || 'N/A'}</span>
@@ -40,7 +40,7 @@ export const columns: ColumnDef<TdStrategy>[] = [
         accessorKey: "pricing",
         header: "Strategy Type",
         cell: ({ row }) => (
-            <span className="text-gray-100 dark:text-gray-200 font-medium">{row.original.features?.toUpperCase()}</span>
+            <span className="text-gray-100 dark:text-gray-200 font-medium">{row.original.strategyType?.toUpperCase()}</span>
         ),
     },
     {

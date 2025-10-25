@@ -145,15 +145,15 @@ export const OrderLegControls: React.FC<OrderLegControlsProps> = ({
                                 <div className="flex gap-2 w-full">
                                     <div
                                         onClick={() => setIsBuy(isBuy === "Buy" ? "Sell" : "Buy")}
-                                        className={`flex cursor-pointer items-center text-sm border bg-dark rounded-md px-3 py-1 ${isBuy ? "border-green-600" : "border-red-600"}`}
+                                        className={`flex cursor-pointer items-center text-sm border bg-dark rounded-md px-3 py-1 ${isBuy === "Buy" ? "border-green-600" : "border-red-600"}`}
                                         role="button"
-                                        aria-label={isBuy ? "Switch to Sell" : "Switch to Buy"}
+                                        aria-label={isBuy === "Buy" ? "Switch to Sell" : "Switch to Buy"}
                                     >
-                                        <span className={isBuy ? "text-green-600" : "text-red-600"}>
-                                            {isBuy ? "Buy" : "Sell"}
+                                        <span className={isBuy === "Buy" ? "text-green-600" : "text-red-600"}>
+                                            {isBuy}
                                         </span>
                                         <ChevronsDownUp
-                                            className={isBuy ? "text-green-600" : "text-red-600"}
+                                            className={isBuy === "Buy" ? "text-green-600" : "text-red-600"}
                                             size={16}
                                         />
                                     </div>
@@ -175,24 +175,24 @@ export const OrderLegControls: React.FC<OrderLegControlsProps> = ({
                                     </div>
                                     <div
                                         onClick={() => setIsCE(isCE === "CE" ? "PE" : "CE")}
-                                        className={`flex cursor-pointer items-center text-sm border bg-dark rounded-md px-3 py-1 ${isCE ? "border-green-600" : "border-red-600"}`}
+                                        className={`flex cursor-pointer items-center text-sm border bg-dark rounded-md px-3 py-1 ${isCE === "CE" ? "border-green-600" : "border-red-600"}`}
                                     >
-                                        <span className={isCE ? "text-green-600" : "text-red-600"}>
-                                            {isCE ? "CE" : "PE"}
+                                        <span className={isCE === "CE" ? "text-green-600" : "text-red-600"}>
+                                            {isCE}
                                         </span>
-                                        <ChevronsDownUp className={isCE ? "text-green-600" : "text-red-600"} size={16} />
+                                        <ChevronsDownUp className={isCE === "CE" ? "text-green-600" : "text-red-600"} size={16} />
                                     </div>
                                     <div
                                         onClick={() => setIsWeekly(isWeekly === "Weekly" ? "Monthly" : "Weekly")}
-                                        className={`flex cursor-pointer items-center text-sm border bg-dark rounded-md px-3 py-1 ${isWeekly ? "border-yellow-600" : "border-purple-600"}`}
+                                        className={`flex cursor-pointer items-center text-sm border bg-dark rounded-md px-3 py-1 ${isWeekly === "Weekly" ? "border-yellow-600" : "border-purple-600"}`}
                                         role="button"
-                                        aria-label={isWeekly ? "Switch to Monthly" : "Switch to Weekly"}
+                                        aria-label={isWeekly === "Weekly" ? "Switch to Monthly" : "Switch to Weekly"}
                                     >
-                                        <span className={isWeekly ? "text-yellow-600" : "text-purple-600"}>
-                                            {isWeekly ? "Weekly" : "Monthly"}
+                                        <span className={isWeekly === "Weekly" ? "text-yellow-600" : "text-purple-600"}>
+                                            {isWeekly}
                                         </span>
                                         <ChevronsDownUp
-                                            className={isWeekly ? "text-yellow-600" : "text-purple-600"}
+                                            className={isWeekly === "Weekly" ? "text-yellow-600" : "text-purple-600"}
                                             size={16}
                                         />
                                     </div>

@@ -14,12 +14,12 @@ import { Ban, RotateCcw } from "lucide-react";
 import OrderLegs from "@/components/strategycomponets/OrderLegs";
 import Conditions from "@/components/strategycomponets/Conditions";
 import { toast } from "sonner";
-import type { StrategyPayload, Condition, OrderSettingsData, OrderLegsData, OptionPositionBuilderData, EntryConditionsData, ExitConditionsData, RiskManagementData, InstrumentItem, TdStrategy } from "./strategyTypes";
+import type { StrategyPayload, Condition, OrderSettingsData, OrderLegsData, OptionPositionBuilderData, EntryConditionsData, ExitConditionsData, RiskManagementData, InstrumentItem, } from "./strategyTypes";
 import { apiService } from "./apiservice";
 
 const EditStrategy: React.FC = () => {
     const navigate = useNavigate();
-    const { id } = useParams<{ id: string }>(); // Get the strategy ID from URL
+    const { id } = useParams<{ id: string }>();
 
     // State
     const [strategyType, setStrategyType] = useState<"timebased" | "indicatorbased">("timebased");
@@ -53,40 +53,40 @@ const EditStrategy: React.FC = () => {
     // Fetch strategy data on component mount
     useEffect(() => {
         const fetchStrategy = async () => {
-            if (id) {
-                try {
-                    const strategy = await apiService.getStrategy(id);
-                    setStrategyName(strategy.strategyName);
-                    setStrategyType(strategy.strategyType);
-                    setInstruments(strategy.instruments || []);
-                    setOrderSettings({
-                        ...orderSettings,
-                        ...strategy.orderSettings,
-                        days: strategy.orderSettings?.days || [],
-                    });
-                    setSelectedTemplate(strategy.orderSettings?.template || "");
-                    if (strategy.strategyType === "timebased" && strategy.orderLegs) {
-                        setOrderLegs(strategy.orderLegs);
-                    }
-                    if (strategy.strategyType === "indicatorbased") {
-                        setOptionPositionBuilder(strategy.optionPositionBuilder || { positions: [] });
-                        setEntryConditions(strategy.entryConditions || { conditions: [] });
-                        setExitConditions(strategy.exitConditions || { conditions: [], isEnabled: false });
-                    }
-                    setRiskManagementData(strategy.riskManagement || {
-                        profit: "",
-                        loss: "",
-                        total: "",
-                        time: "",
-                        trailingType: "notrailing",
-                        lockFixProfit: { ifProfit: "", profitAt: "" },
-                        trailProfit: { everyIncrease: "", trailProfitBy: "" },
-                        lockAndTrail: { ifProfit: "", profitAt: "", everyIncrease: "", trailProfitBy: "" },
-                    });
-                } catch (error) {
-                    console.error("Error fetching strategy:", error);
-                    toast.error("Failed to load strategy data.");
+            if (!id) return;
+            try {
+                const strategy = await apiService.getStrategy(id);
+                setStrategyName(strategy.strategyName || "");
+                setStrategyType((strategy.strategyType as "timebased" | "indicatorbased") || "timebased");
+                setInstruments(strategy.instruments || []);
+                setOrderSettings({
+                    ...orderSettings,
+                    ...strategy.orderSettings,
+                    days: strategy.orderSettings?.days || [],
+                    template: strategy.orderSettings?.template || "",
+                });
+                setSelectedTemplate(strategy.orderSettings?.template || "");
+                if (strategy.strategyType === "timebased" && strategy.orderLegs) {
+                    setOrderLegs(strategy.orderLegs);
                 }
+                if (strategy.strategyType === "indicatorbased") {
+                    setOptionPositionBuilder(strategy.optionPositionBuilder || { positions: [] });
+                    setEntryConditions(strategy.entryConditions || { conditions: [] });
+                    setExitConditions(strategy.exitConditions || { conditions: [], isEnabled: false });
+                }
+                setRiskManagementData(strategy.riskManagement || {
+                    profit: "",
+                    loss: "",
+                    total: "",
+                    time: "",
+                    trailingType: "notrailing",
+                    lockFixProfit: { ifProfit: "", profitAt: "" },
+                    trailProfit: { everyIncrease: "", trailProfitBy: "" },
+                    lockAndTrail: { ifProfit: "", profitAt: "", everyIncrease: "", trailProfitBy: "" },
+                });
+            } catch (error) {
+                console.error("Error fetching strategy:", error);
+                toast.error("Failed to load strategy data.");
             }
         };
         fetchStrategy();
@@ -99,6 +99,7 @@ const EditStrategy: React.FC = () => {
 
     const handleTemplateSelect = useCallback((template: string) => {
         setSelectedTemplate(template);
+        setOrderSettings((prev) => ({ ...prev, template }));
     }, []);
 
     const handleOrderLegsChange = useCallback((data: OrderLegsData) => {
@@ -138,41 +139,41 @@ const EditStrategy: React.FC = () => {
 
     const resetForm = useCallback(() => {
         const fetchStrategy = async () => {
-            if (id) {
-                try {
-                    const strategy = await apiService.getStrategy(id);
-                    setStrategyName(strategy.strategyName);
-                    setStrategyType(strategy.strategyType);
-                    setInstruments(strategy.instruments || []);
-                    setOrderSettings({
-                        ...orderSettings,
-                        ...strategy.orderSettings,
-                        days: strategy.orderSettings?.days || [],
-                    });
-                    setSelectedTemplate(strategy.orderSettings?.template || "");
-                    if (strategy.strategyType === "timebased" && strategy.orderLegs) {
-                        setOrderLegs(strategy.orderLegs);
-                    }
-                    if (strategy.strategyType === "indicatorbased") {
-                        setOptionPositionBuilder(strategy.optionPositionBuilder || { positions: [] });
-                        setEntryConditions(strategy.entryConditions || { conditions: [] });
-                        setExitConditions(strategy.exitConditions || { conditions: [], isEnabled: false });
-                    }
-                    setRiskManagementData(strategy.riskManagement || {
-                        profit: "",
-                        loss: "",
-                        total: "",
-                        time: "",
-                        trailingType: "notrailing",
-                        lockFixProfit: { ifProfit: "", profitAt: "" },
-                        trailProfit: { everyIncrease: "", trailProfitBy: "" },
-                        lockAndTrail: { ifProfit: "", profitAt: "", everyIncrease: "", trailProfitBy: "" },
-                    });
-                    toast.success("Form reset to original values!");
-                } catch (error) {
-                    console.error("Error resetting form:", error);
-                    toast.error("Failed to reset form.");
+            if (!id) return;
+            try {
+                const strategy = await apiService.getStrategy(id);
+                setStrategyName(strategy.strategyName || "");
+                setStrategyType((strategy.strategyType as "timebased" | "indicatorbased") || "timebased");
+                setInstruments(strategy.instruments || []);
+                setOrderSettings({
+                    ...orderSettings,
+                    ...strategy.orderSettings,
+                    days: strategy.orderSettings?.days || [],
+                    template: strategy.orderSettings?.template || "",
+                });
+                setSelectedTemplate(strategy.orderSettings?.template || "");
+                if (strategy.strategyType === "timebased" && strategy.orderLegs) {
+                    setOrderLegs(strategy.orderLegs);
                 }
+                if (strategy.strategyType === "indicatorbased") {
+                    setOptionPositionBuilder(strategy.optionPositionBuilder || { positions: [] });
+                    setEntryConditions(strategy.entryConditions || { conditions: [] });
+                    setExitConditions(strategy.exitConditions || { conditions: [], isEnabled: false });
+                }
+                setRiskManagementData(strategy.riskManagement || {
+                    profit: "",
+                    loss: "",
+                    total: "",
+                    time: "",
+                    trailingType: "notrailing",
+                    lockFixProfit: { ifProfit: "", profitAt: "" },
+                    trailProfit: { everyIncrease: "", trailProfitBy: "" },
+                    lockAndTrail: { ifProfit: "", profitAt: "", everyIncrease: "", trailProfitBy: "" },
+                });
+                toast.success("Form reset to original values!");
+            } catch (error) {
+                console.error("Error resetting form:", error);
+                toast.error("Failed to reset form.");
             }
         };
         fetchStrategy();
@@ -181,7 +182,6 @@ const EditStrategy: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validation (same as create, adjusted for edit context)
         if (!strategyName.trim()) {
             toast.error("Please enter a valid strategy name.");
             return;
@@ -255,7 +255,7 @@ const EditStrategy: React.FC = () => {
         };
 
         try {
-            await apiService.updateStrategy(id!, payload); // Use updateStrategy instead of createStrategy
+            await apiService.updateStrategy(id!, payload);
             navigate("/strategy");
         } catch (error) {
             console.error("Error updating strategy:", error);
@@ -308,28 +308,43 @@ const EditStrategy: React.FC = () => {
                         </div>
 
                         <StrategyType strategyType={strategyType} setStrategyType={setStrategyType} />
-                        <Instruments strategyType={strategyType} onInstrumentsChange={handleInstrumentsChange} />
+                        <Instruments
+                            strategyType={strategyType}
+                            onInstrumentsChange={handleInstrumentsChange}
+                            initialInstruments={instruments}
+                        />
                         <OrderSettings
                             strategyType={strategyType}
                             template={selectedTemplate}
                             onTemplateSelect={handleTemplateSelect}
                             onSettingsChange={handleOrderSettingsChange}
+                            initialSettings={orderSettings}
                         />
                         {strategyType === "timebased" ? (
-                            <OrderLegs selectedTemplate={selectedTemplate} onLegsChange={handleOrderLegsChange} />
+                            <OrderLegs
+                                selectedTemplate={selectedTemplate}
+                                onLegsChange={handleOrderLegsChange}
+                                initialData={orderLegs ? [{ orderLegs }] : undefined}
+                            />
                         ) : (
                             <>
                                 <Conditions
                                     orderSettings={orderSettings}
                                     type="entry"
                                     onConditionsChange={handleEntryConditionsChange}
+                                    initialConditions={entryConditions.conditions}
                                 />
                                 <Conditions
                                     orderSettings={orderSettings}
                                     type="exit"
                                     onConditionsChange={handleExitConditionsChange}
+                                    initialConditions={exitConditions.conditions}
+                                    initialIsEnabled={exitConditions.isEnabled}
                                 />
-                                <OptionPositionBuilder onPositionsChange={handleOptionPositionBuilderChange} />
+                                <OptionPositionBuilder
+                                    onPositionsChange={handleOptionPositionBuilderChange}
+                                    initialPositions={optionPositionBuilder.positions}
+                                />
                             </>
                         )}
                         <RiskManagement

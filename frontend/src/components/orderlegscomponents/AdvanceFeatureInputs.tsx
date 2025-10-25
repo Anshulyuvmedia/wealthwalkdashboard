@@ -167,7 +167,7 @@ export const AdvanceFeatureInputs: React.FC<AdvanceFeatureInputsProps> = ({
                                     <InputGroupButton
                                         variant="ghost"
                                         className="!pr-1.5 text-xs cursor-pointer bg-gray-700 text-white"
-                                        disabled={reEntryMode !== 'ReExecute'}
+                                        disabled={reEntryMode !== "ReExecute"}
                                     >
                                         {executionType}
                                         <ChevronDown className="size-3" />

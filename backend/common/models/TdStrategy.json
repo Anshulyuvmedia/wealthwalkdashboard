@@ -19,7 +19,7 @@
             "type": "number",
             "required": true
         },
-        "features":  {
+        "strategyType":  {
             "type": "string",
             "required": true
         },
