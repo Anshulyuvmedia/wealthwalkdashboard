@@ -1,18 +1,28 @@
+// ─────────────────────────────────────────────────────────────────────────────
+//  Instruments.tsx
+// ─────────────────────────────────────────────────────────────────────────────
 import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { PlusCircle, Search, X } from "lucide-react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, } from "@/components/ui/dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 import { InputGroup, InputGroupAddon, InputGroupInput, } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
 const dummyInstruments = [
-    { id: 1, name: "BANKNIFTY 45000 CE", type: "options", price: 0.0, exchange: "NSE", lotSize: 25 },
-    { id: 2, name: "NIFTY 22500 PE", type: "options", price: 0.0, exchange: "NSE", lotSize: 50 },
-    { id: 3, name: "RELIANCE 3000 CE", type: "options", price: 0.0, exchange: "NSE", lotSize: 25 },
+    { id: 1, name: "BANK NIFTY", type: "options", price: 0.0, exchange: "NSE", lotSize: 25 },
+    { id: 2, name: "NIFTY 50", type: "options", price: 0.0, exchange: "NSE", lotSize: 50 },
+    { id: 3, name: "NIFTY FIN SERVICE", type: "options", price: 0.0, exchange: "NSE", lotSize: 25 },
+    { id: 19, name: "SENSEX", type: "options", price: 0.0, exchange: "NSE", lotSize: 25 },
     { id: 4, name: "Tata Motors", type: "equity", price: 0.0, exchange: "NSE" },
     { id: 5, name: "Infosys", type: "equity", price: 0.0, exchange: "NSE" },
     { id: 6, name: "HDFC Bank", type: "equity", price: 0.0, exchange: "NSE" },
@@ -30,18 +40,37 @@ const dummyInstruments = [
     { id: 18, name: "SILVER", type: "mcx", price: 0.0, exchange: "MCX" },
 ];
 
-interface StrategyTypeProps {
-    strategyType: "timebased" | "indicatorbased";
+export interface InstrumentItem {
+    id: number;
+    type: string;
+    name: string;
+    price: number;
+    exchange: string;
+    qty?: number;      // for non-options
+    lot?: number;      // for options (fixed lot size)
 }
 
-const Instruments: React.FC<StrategyTypeProps> = ({ strategyType }) => {
+/* ──────────────────────────────────────────────────────────────────────── */
+interface InstrumentsProps {
+    strategyType: "timebased" | "indicatorbased";
+    /** Called **every time** the selection changes */
+    onInstrumentsChange: (instruments: InstrumentItem[]) => void;
+}
+
+/* ──────────────────────────────────────────────────────────────────────── */
+const Instruments: React.FC<InstrumentsProps> = ({
+    strategyType,
+    onInstrumentsChange,
+}) => {
     const [marketType, setMarketType] = useState("options");
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedInstruments, setSelectedInstruments] = useState<
-        { id: number; type: string; name: string; price: number; exchange: string; qty: number; lot?: number }[]
-    >([]);
+    const [selectedInstruments, setSelectedInstruments] = useState<InstrumentItem[]>([]);
     const [open, setOpen] = useState(false);
-    const [alertOpen, setAlertOpen] = useState(false); // ✅ New alert dialog state
+
+    /* ────── keep parent in sync ────── */
+    useEffect(() => {
+        onInstrumentsChange(selectedInstruments);
+    }, [selectedInstruments, onInstrumentsChange]);
 
     const filteredInstruments = useMemo(() => {
         return dummyInstruments.filter(
@@ -51,16 +80,14 @@ const Instruments: React.FC<StrategyTypeProps> = ({ strategyType }) => {
         );
     }, [marketType, searchTerm]);
 
-    const handleSelectInstrument = (instrument: any) => {
-        // Prevent selecting options if another type is selected
+    const handleSelectInstrument = (instrument: typeof dummyInstruments[0]) => {
+        // ---- validation (exactly what you already had) ----
         if (instrument.type === "options" && selectedInstruments.length > 0) {
             toast.error("You can’t add Options when other instruments are already selected.");
             return;
         }
-
-        // Prevent adding other types when options already selected
         if (
-            selectedInstruments.some((item) => item.type === "options") &&
+            selectedInstruments.some((i) => i.type === "options") &&
             instrument.type !== "options"
         ) {
             toast.error("You can’t mix Options with other instrument types.");
@@ -68,192 +95,178 @@ const Instruments: React.FC<StrategyTypeProps> = ({ strategyType }) => {
         }
 
         if (!selectedInstruments.find((i) => i.id === instrument.id)) {
-            setSelectedInstruments([
-                ...selectedInstruments,
-                instrument.type === "options"
-                    ? { ...instrument, lot: 25 } // fixed lot size for options
-                    : { ...instrument, qty: 1 },
-            ]);
+            const newItem: InstrumentItem = {
+                id: instrument.id,
+                type: instrument.type,
+                name: instrument.name,
+                price: instrument.price,
+                exchange: instrument.exchange,
+                ...(instrument.type === "options"
+                    ? { lot: instrument.lotSize ?? 25 }
+                    : { qty: 1 }),
+            };
+            setSelectedInstruments((prev) => [...prev, newItem]);
         }
-
         setOpen(false);
-        toast.success(`${instrument.name} added successfully.`);
+        toast.success(`${instrument.name} added.`);
     };
 
-
     const handleRemoveInstrument = (id: number) => {
-        setSelectedInstruments(selectedInstruments.filter((item) => item.id !== id));
+        setSelectedInstruments((prev) => prev.filter((i) => i.id !== id));
     };
 
     const handleQtyChange = (id: number, qty: number) => {
         setSelectedInstruments((prev) =>
-            prev.map((item) =>
-                item.id === id ? { ...item, qty: qty < 1 ? 1 : qty } : item
-            )
+            prev.map((i) => (i.id === id ? { ...i, qty: qty < 1 ? 1 : qty } : i))
         );
     };
 
+    /* Force “options” when time-based */
     useEffect(() => {
-        if (strategyType === "timebased") {
-            setMarketType("options");
-        }
+        if (strategyType === "timebased") setMarketType("options");
     }, [strategyType]);
 
     return (
-        <>
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg">Select Instruments</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-wrap gap-4">
-                        {selectedInstruments.map((instrument) => (
-                            <div
-                                key={instrument.id}
-                                className="w-52 rounded-xl p-4 shadow-lg relative border text-white"
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">Select Instruments</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="flex flex-wrap gap-4">
+                    {selectedInstruments.map((inst) => (
+                        <div
+                            key={inst.id}
+                            className="w-52 rounded-xl p-4 shadow-lg relative border text-white"
+                        >
+                            <button
+                                onClick={() => handleRemoveInstrument(inst.id)}
+                                className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
                             >
-                                <button
-                                    onClick={() => handleRemoveInstrument(instrument.id)}
-                                    className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
-                                >
-                                    <X size={16} />
-                                </button>
-                                <div className="font-medium text-sm">{instrument.name}</div>
-                                <div className="flex space-x-2 items-center">
-                                    <div className="text-xs text-gray-400">
-                                        {instrument.exchange}:
-                                    </div>
-                                    <div className="text-green-400 text-xs">
-                                        {instrument.price.toFixed(2)} (0.00%)
-                                    </div>
+                                <X size={16} />
+                            </button>
+
+                            <div className="font-medium text-sm">{inst.name}</div>
+                            <div className="flex space-x-2 items-center">
+                                <div className="text-xs text-gray-400">{inst.exchange}:</div>
+                                <div className="text-green-400 text-xs">
+                                    {inst.price.toFixed(2)} (0.00%)
                                 </div>
-
-                                {/* ✅ Show fixed lot size for options */}
-                                {instrument.type === "options" ? (
-                                    <div className="mt-2 text-xs text-gray-300">
-                                        Lot Size: <span className="font-bold">{instrument.lot}</span>
-                                    </div>
-                                ) : (
-                                    <div className="mt-2 flex items-center">
-                                        <Label htmlFor={`qty-${instrument.id}`} className="text-xs me-2 text-gray-300">
-                                            Qty
-                                        </Label>
-                                        <Input
-                                            id={`qty-${instrument.id}`}
-                                            type="number"
-                                            min="1"
-                                            value={instrument.qty}
-                                            onChange={(e) =>
-                                                handleQtyChange(instrument.id, parseInt(e.target.value))
-                                            }
-                                            className="h-8 text-xs w-16 text-white"
-                                        />
-                                    </div>
-                                )}
                             </div>
-                        ))}
 
-                        {/* ✅ Hide Add button if options instrument selected */}
-                        {!selectedInstruments.some((i) => i.type === "options") && (
-                            <Dialog open={open} onOpenChange={setOpen}>
-                                <DialogTrigger asChild>
-                                    <div className="w-44 hover:bg-gray-800 hover:text-white hover:shadow-sm p-3 rounded-lg border-2 border-dashed flex flex-col justify-center items-center shadow-md cursor-pointer transition-all">
-                                        <PlusCircle className="mb-2 h-8 w-8" />
-                                        <div>Add Instruments</div>
-                                    </div>
-                                </DialogTrigger>
+                            {inst.type === "options" ? (
+                                <div className="mt-2 text-xs text-gray-300">
+                                    Lot Size: <span className="font-bold">{inst.lot}</span>
+                                </div>
+                            ) : (
+                                <div className="mt-2 flex items-center">
+                                    <Label
+                                        htmlFor={`qty-${inst.id}`}
+                                        className="text-xs me-2 text-gray-300"
+                                    >
+                                        Qty
+                                    </Label>
+                                    <Input
+                                        id={`qty-${inst.id}`}
+                                        type="number"
+                                        min="1"
+                                        value={inst.qty ?? 1}
+                                        onChange={(e) =>
+                                            handleQtyChange(inst.id, parseInt(e.target.value) || 1)
+                                        }
+                                        className="h-8 text-xs w-16 text-white"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    ))}
 
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Add Instruments</DialogTitle>
+                    {/* Add-button is hidden when an option is already selected */}
+                    {!selectedInstruments.some((i) => i.type === "options") && (
+                        <Dialog open={open} onOpenChange={setOpen}>
+                            <DialogTrigger asChild>
+                                <div className="w-44 hover:bg-gray-800 hover:text-white hover:shadow-sm p-3 rounded-lg border-2 border-dashed flex flex-col justify-center items-center shadow-md cursor-pointer transition-all">
+                                    <PlusCircle className="mb-2 h-8 w-8" />
+                                    <div>Add Instruments</div>
+                                </div>
+                            </DialogTrigger>
 
-                                        <div className="py-3">
-                                            <RadioGroup
-                                                value={marketType}
-                                                onValueChange={setMarketType}
-                                                className="flex flex-wrap gap-3"
-                                            >
-                                                {["Options", "Equity", "Futures", "Indices", "CDS", "MCX"].map((type) => (
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Add Instruments</DialogTitle>
+
+                                    <div className="py-3">
+                                        <RadioGroup
+                                            value={marketType}
+                                            onValueChange={setMarketType}
+                                            className="flex flex-wrap gap-3"
+                                        >
+                                            {["Options", "Equity", "Futures", "Indices", "CDS", "MCX"].map(
+                                                (type) => (
                                                     <div key={type} className="flex items-center gap-2">
                                                         <RadioGroupItem
-                                                            value={type.toLowerCase()} // Ensure value matches `marketType` state
+                                                            value={type.toLowerCase()}
                                                             id={type}
-                                                            disabled={strategyType === "timebased" && type !== "Options"} // Disable non-Options when timebased
+                                                            disabled={
+                                                                strategyType === "timebased" && type !== "Options"
+                                                            }
                                                         />
                                                         <Label htmlFor={type}>{type}</Label>
                                                     </div>
-                                                ))}
-                                            </RadioGroup>
-                                        </div>
-
-                                        {strategyType == 'timebased' ?
-                                            <DialogDescription>
-                                                * Only option category allowed for Time-Based strategy type
-                                            </DialogDescription>
-                                            :
-                                            <DialogDescription>
-                                                Search scripts: i.e. State Bank Of India, Banknifty, Crudeoil
-                                            </DialogDescription>
-                                        }
-
-
-                                        <div className="my-3">
-                                            <InputGroup>
-                                                <InputGroupInput
-                                                    placeholder="Search instruments..."
-                                                    value={searchTerm}
-                                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                                />
-                                                <InputGroupAddon>
-                                                    <Search />
-                                                </InputGroupAddon>
-                                                <InputGroupAddon align="inline-end">
-                                                    {filteredInstruments.length} results
-                                                </InputGroupAddon>
-                                            </InputGroup>
-                                        </div>
-
-                                        <div className="max-h-64 overflow-y-auto mt-3 space-y-2">
-                                            {filteredInstruments.length > 0 ? (
-                                                filteredInstruments.map((item) => (
-                                                    <div
-                                                        key={item.id}
-                                                        className="border p-2 rounded-md hover:bg-gray-800 hover:text-white cursor-pointer transition"
-                                                        onClick={() => handleSelectInstrument(item)}
-                                                    >
-                                                        {item.name}
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <p className="text-sm text-muted-foreground">
-                                                    No instruments found.
-                                                </p>
+                                                )
                                             )}
-                                        </div>
-                                    </DialogHeader>
-                                </DialogContent>
-                            </Dialog>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
+                                        </RadioGroup>
+                                    </div>
 
-            {/* ✅ Custom Dialog Alert */}
-            <Dialog open={alertOpen} onOpenChange={setAlertOpen}>
-                <DialogContent className="max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle>Cannot Add Instrument</DialogTitle>
-                        <DialogDescription>
-                            You can either select a single <strong>Options</strong> instrument or multiple from
-                            other categories — not both together.
-                        </DialogDescription>
-                        <div className="flex justify-end mt-4">
-                            <Button onClick={() => setAlertOpen(false)}>OK</Button>
-                        </div>
-                    </DialogHeader>
-                </DialogContent>
-            </Dialog>
-        </>
+                                    {strategyType === "timebased" ? (
+                                        <DialogDescription>
+                                            * Only option category allowed for Time-Based strategy type
+                                        </DialogDescription>
+                                    ) : (
+                                        <DialogDescription>
+                                            Search scripts: i.e. State Bank Of India, Banknifty, Crudeoil
+                                        </DialogDescription>
+                                    )}
+
+                                    <div className="my-3">
+                                        <InputGroup>
+                                            <InputGroupInput
+                                                placeholder="Search instruments..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                            />
+                                            <InputGroupAddon>
+                                                <Search />
+                                            </InputGroupAddon>
+                                            <InputGroupAddon align="inline-end">
+                                                {filteredInstruments.length} results
+                                            </InputGroupAddon>
+                                        </InputGroup>
+                                    </div>
+
+                                    <div className="max-h-64 overflow-y-auto mt-3 space-y-2">
+                                        {filteredInstruments.length > 0 ? (
+                                            filteredInstruments.map((item) => (
+                                                <div
+                                                    key={item.id}
+                                                    className="border p-2 rounded-md hover:bg-gray-800 hover:text-white cursor-pointer transition"
+                                                    onClick={() => handleSelectInstrument(item)}
+                                                >
+                                                    {item.name}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">
+                                                No instruments found.
+                                            </p>
+                                        )}
+                                    </div>
+                                </DialogHeader>
+                            </DialogContent>
+                        </Dialog>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
     );
 };
 

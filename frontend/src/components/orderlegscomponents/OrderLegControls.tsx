@@ -20,6 +20,8 @@ import { Separator } from "@/components/ui/separator";
 interface OrderLegControlsProps {
     isBuy: boolean;
     setIsBuy: (value: boolean) => void;
+    isCE: boolean;
+    setIsCE: (value: boolean) => void;
     isWeekly: boolean;
     setIsWeekly: (value: boolean) => void;
     firstSelection: string;
@@ -79,6 +81,8 @@ interface OrderLegControlsProps {
 export const OrderLegControls: React.FC<OrderLegControlsProps> = ({
     isBuy,
     setIsBuy,
+    isCE,
+    setIsCE,
     isWeekly,
     setIsWeekly,
     firstSelection,
@@ -168,6 +172,15 @@ export const OrderLegControls: React.FC<OrderLegControlsProps> = ({
                                                 <InputGroupText>Qty:</InputGroupText>
                                             </InputGroupAddon>
                                         </InputGroup>
+                                    </div>
+                                    <div
+                                        onClick={() => setIsCE(!isCE)}
+                                        className={`flex cursor-pointer items-center text-sm border bg-dark rounded-md px-3 py-1 ${isCE ? "border-green-600" : "border-red-600"}`}
+                                    >
+                                        <span className={isCE ? "text-green-600" : "text-red-600"}>
+                                            {isCE ? "CE" : "PE"}
+                                        </span>
+                                        <ChevronsDownUp className={isCE ? "text-green-600" : "text-red-600"} size={16} />
                                     </div>
                                     <div
                                         onClick={() => setIsWeekly(!isWeekly)}

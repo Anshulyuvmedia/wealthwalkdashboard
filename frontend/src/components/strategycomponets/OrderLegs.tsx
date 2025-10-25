@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { OrderLegHeader } from "@/components/orderlegscomponents/OrderLegHeader";
+// src/components/strategycomponets/OrderLegs.tsx (updated)
+
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrderLegControls } from "@/components/orderlegscomponents/OrderLegControls";
 import { Button } from "@/components/ui/button";
 import { v4 as uuidv4 } from "uuid";
@@ -26,10 +27,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CircleAlert, AlertCircleIcon, PlusCircle } from "lucide-react";
+import { getTemplateLegs } from "@/constants/templateConfigs";
 
 interface OrderLeg {
     id: string;
     isBuy: boolean;
+    isCE: boolean;
     isWeekly: boolean;
     firstSelection: string;
     secondSelection: string;
@@ -51,33 +54,11 @@ interface OrderLeg {
 
 interface OrderLegsProps {
     selectedTemplate: string;
+    onLegsChange: (data: { advanceFeatures: any; legs: any[] }) => void; // New callback
 }
 
-const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
-    const [legs, setLegs] = useState<OrderLeg[]>([
-        {
-            id: uuidv4(),
-            isBuy: true,
-            isWeekly: true,
-            firstSelection: "ATM pt",
-            secondSelection: "ATM",
-            tpSelection: "TP pt",
-            slSelection: "SL pt",
-            onSelection: "On Price",
-            onSelectionSec: "On Price",
-            premiumDiffValue: "",
-            waitAndTradeValue: "",
-            waitAndTradeUnit: "⏰ % ↓",
-            reEntryMode: "ReEntry On Cost",
-            reEntryValue: "",
-            executionType: "On Close",
-            executionTypeSelection: "Combined",
-            tslMode: "TSL %",
-            tslSelection: "TSL pt",
-            tslTrailBy: "",
-        },
-    ]);
-
+const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate, onLegsChange }) => {
+    const [legs, setLegs] = useState<OrderLeg[]>([]);
     const [moveSLToCost, setMoveSLToCost] = useState(false);
     const [exitAllOnSLTgt, setExitAllOnSLTgt] = useState(false);
     const [prePunchSL, setPrePunchSL] = useState(false);
@@ -85,13 +66,9 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
     const [waitAndTrade, setWaitAndTrade] = useState(false);
     const [reEntryExecute, setReEntryExecute] = useState(false);
     const [trailSL, setTrailSL] = useState(false);
-
-    // Dialog open states
     const [isPremiumDialogOpen, setIsPremiumDialogOpen] = useState(false);
     const [isReEntryDialogOpen, setIsReEntryDialogOpen] = useState(false);
     const [isTrailSLDialogOpen, setIsTrailSLDialogOpen] = useState(false);
-
-    // Temporary state for dialog inputs
     const [tempPremiumDiffValue, setTempPremiumDiffValue] = useState<number | "">("");
     const [tempReEntryValue, setTempReEntryValue] = useState<number | "">("");
     const [tempExecutionType, setTempExecutionType] = useState("On Close");
@@ -100,13 +77,99 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
     const [tempTslSelection, setTempTslSelection] = useState("TSL pt");
     const [tempTslTrailBy, setTempTslTrailBy] = useState("");
 
+    // Notify parent of changes
+    const notifyParent = () => {
+        const data = {
+            advanceFeatures: {
+                moveSLToCost,
+                exitAllOnSLTgt,
+                prePunchSL,
+                premiumDifference: { enabled: premiumDifference },
+                waitAndTrade: { enabled: waitAndTrade },
+                reEntryExecute: { enabled: reEntryExecute },
+                trailSL: { enabled: trailSL },
+            },
+            legs: legs.map((leg) => ({
+                id: leg.id,
+                isBuy: leg.isBuy,
+                isCE: leg.isCE,
+                isWeekly: leg.isWeekly,
+                firstSelection: leg.firstSelection,
+                secondSelection: leg.secondSelection,
+                tpSelection: leg.tpSelection,
+                slSelection: leg.slSelection,
+                onSelection: leg.onSelection,
+                onSelectionSec: leg.onSelectionSec,
+                advanceFeatures: {
+                    premiumDifference: { value: leg.premiumDiffValue },
+                    waitAndTrade: {
+                        value: leg.waitAndTradeValue,
+                        unit: leg.waitAndTradeUnit,
+                    },
+                    reEntryExecute: {
+                        mode: leg.reEntryMode,
+                        value: leg.reEntryValue,
+                        executionType: leg.executionType,
+                        executionTypeSelection: leg.executionTypeSelection,
+                    },
+                    trailSL: {
+                        mode: leg.tslMode,
+                        values: [leg.tslSelection, leg.tslTrailBy],
+                    },
+                },
+            })),
+        };
+        onLegsChange(data);
+    };
+
+    useEffect(() => {
+        const templateLegs = getTemplateLegs(selectedTemplate);
+        if (templateLegs.length > 0) {
+            setLegs(templateLegs);
+        } else {
+            setLegs([
+                {
+                    id: uuidv4(),
+                    isBuy: true,
+                    isCE: true,
+                    isWeekly: true,
+                    firstSelection: "ATM pt",
+                    secondSelection: "ATM",
+                    tpSelection: "TP pt",
+                    slSelection: "SL pt",
+                    onSelection: "On Price",
+                    onSelectionSec: "On Price",
+                    premiumDiffValue: "",
+                    waitAndTradeValue: "",
+                    waitAndTradeUnit: "⏰ % ↓",
+                    reEntryMode: "ReEntry On Cost",
+                    reEntryValue: "",
+                    executionType: "On Close",
+                    executionTypeSelection: "Combined",
+                    tslMode: "TSL %",
+                    tslSelection: "TSL pt",
+                    tslTrailBy: "",
+                },
+            ]);
+        }
+        setMoveSLToCost(false);
+        setExitAllOnSLTgt(false);
+        setPrePunchSL(false);
+        setPremiumDifference(false);
+        setWaitAndTrade(false);
+        setReEntryExecute(false);
+        setTrailSL(false);
+        notifyParent();
+    }, [selectedTemplate]);
+
     const handleAddLeg = (e: React.MouseEvent) => {
         e.preventDefault();
-        setLegs([
+        const newLegs = [
             ...legs,
             {
                 id: uuidv4(),
                 isBuy: true,
+                isCE: true,
                 isWeekly: true,
                 firstSelection: "ATM pt",
                 secondSelection: "ATM",
@@ -125,13 +188,17 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
                 tslSelection: "TSL pt",
                 tslTrailBy: "",
             },
-        ]);
+        ];
+        setLegs(newLegs);
+        notifyParent();
     };
 
     const handleDeleteLeg = (e: React.MouseEvent, id: string) => {
         e.preventDefault();
         if (legs.length > 1) {
-            setLegs(legs.filter((leg) => leg.id !== id));
+            const newLegs = legs.filter((leg) => leg.id !== id);
+            setLegs(newLegs);
+            notifyParent();
         }
     };
 
@@ -139,12 +206,16 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
         e.preventDefault();
         const legToCopy = legs.find((leg) => leg.id === id);
         if (legToCopy) {
-            setLegs([...legs, { ...legToCopy, id: uuidv4() }]);
+            const newLegs = [...legs, { ...legToCopy, id: uuidv4() }];
+            setLegs(newLegs);
+            notifyParent();
         }
     };
 
     const updateLeg = (id: string, updates: Partial<OrderLeg>) => {
-        setLegs(legs.map((leg) => (leg.id === id ? { ...leg, ...updates } : leg)));
+        const newLegs = legs.map((leg) => (leg.id === id ? { ...leg, ...updates } : leg));
+        setLegs(newLegs);
+        notifyParent();
     };
 
     const handleSaveAll = (e: React.MouseEvent) => {
@@ -162,6 +233,7 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
             legs: legs.map((leg) => ({
                 id: leg.id,
                 isBuy: leg.isBuy,
+                isCE: leg.isCE,
                 isWeekly: leg.isWeekly,
                 firstSelection: leg.firstSelection,
                 secondSelection: leg.secondSelection,
@@ -189,9 +261,9 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
             })),
         };
         console.log("🚀 Saved Values:", payload);
+        onLegsChange(payload);
     };
 
-    // Handle checkbox changes and dialog behavior
     const handleCheckboxChange = (
         feature: string,
         checked: boolean,
@@ -202,7 +274,6 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
         additionalTempSetters?: { setter: (value: any) => void; value: any }[]
     ) => {
         if (checked && !eval(feature)) {
-            // When checking an inactive feature, enable it and open dialog if applicable
             setFeature(true);
             if (dialogOpenSetter) {
                 dialogOpenSetter(true);
@@ -212,24 +283,32 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
             }
             additionalTempSetters?.forEach(({ setter, value }) => setter(value));
         } else if (!checked && eval(feature)) {
-            // When unchecking, disable feature without opening dialog
             setFeature(false);
             if (tempSetter) {
                 tempSetter("");
-                updateLeg(legs[0].id, { premiumDiffValue: "", reEntryValue: "", executionTypeSelection: "Combined" });
+                legs.forEach((leg) => {
+                    updateLeg(leg.id, { premiumDiffValue: "", reEntryValue: "", tslTrailBy: "" });
+                });
             }
         }
+        notifyParent();
     };
 
     return (
         <Card>
-            <OrderLegHeader selectedTemplate={selectedTemplate} />
+            <CardHeader>
+                <div className="flex items-center justify-between w-full space-x-2">
+                    <CardTitle className="text-lg">Order Legs</CardTitle>
+                </div>
+            </CardHeader>
             <CardContent className="space-y-4">
                 {legs.map((leg) => (
                     <OrderLegControls
                         key={leg.id}
                         isBuy={leg.isBuy}
                         setIsBuy={(value) => updateLeg(leg.id, { isBuy: value })}
+                        isCE={leg.isCE}
+                        setIsCE={(value) => updateLeg(leg.id, { isCE: value })}
                         isWeekly={leg.isWeekly}
                         setIsWeekly={(value) => updateLeg(leg.id, { isWeekly: value })}
                         firstSelection={leg.firstSelection}
@@ -323,6 +402,7 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
                                                     setReEntryExecute(false);
                                                     setTrailSL(false);
                                                 }
+                                                notifyParent();
                                             }}
                                         />
                                         <Label htmlFor="moveSLToCost">Move SL to Cost</Label>
@@ -337,6 +417,7 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
                                                 if (isChecked) {
                                                     setReEntryExecute(false);
                                                 }
+                                                notifyParent();
                                             }}
                                         />
                                         <Label htmlFor="exitAllOnSLTgt">Exit All on SL/Tgt</Label>
@@ -345,7 +426,10 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
                                         <Checkbox
                                             id="prePunchSL"
                                             checked={prePunchSL}
-                                            onCheckedChange={(checked) => setPrePunchSL(!!checked)}
+                                            onCheckedChange={(checked) => {
+                                                setPrePunchSL(!!checked);
+                                                notifyParent();
+                                            }}
                                             disabled={moveSLToCost}
                                         />
                                         <Label htmlFor="prePunchSL" className={moveSLToCost ? "opacity-50 cursor-not-allowed" : ""}>
@@ -356,7 +440,10 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
                                         <Checkbox
                                             id="waitAndTrade"
                                             checked={waitAndTrade}
-                                            onCheckedChange={(checked) => setWaitAndTrade(!!checked)}
+                                            onCheckedChange={(checked) => {
+                                                setWaitAndTrade(!!checked);
+                                                notifyParent();
+                                            }}
                                             disabled={moveSLToCost}
                                         />
                                         <Label htmlFor="waitAndTrade" className={moveSLToCost ? "opacity-50 cursor-not-allowed" : ""}>
@@ -373,7 +460,7 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
                                                     !!checked,
                                                     setPremiumDifference,
                                                     setIsPremiumDialogOpen,
-                                                    legs[0].premiumDiffValue,
+                                                    legs[0]?.premiumDiffValue,
                                                     setTempPremiumDiffValue
                                                 )
                                             }
@@ -413,8 +500,9 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
                                                     <DialogClose asChild>
                                                         <Button
                                                             onClick={() => {
-                                                                updateLeg(legs[0].id, { premiumDiffValue: tempPremiumDiffValue });
+                                                                legs.forEach((leg) => updateLeg(leg.id, { premiumDiffValue: tempPremiumDiffValue }));
                                                                 console.log("✅ Premium Difference Saved");
+                                                                notifyParent();
                                                             }}
                                                         >
                                                             Save
@@ -434,11 +522,11 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
                                                     !!checked,
                                                     setReEntryExecute,
                                                     setIsReEntryDialogOpen,
-                                                    legs[0].reEntryValue,
+                                                    legs[0]?.reEntryValue,
                                                     setTempReEntryValue,
                                                     [
-                                                        { setter: setTempExecutionType, value: legs[0].executionType },
-                                                        { setter: setTempExecutionTypeSelection, value: legs[0].executionTypeSelection },
+                                                        { setter: setTempExecutionType, value: legs[0]?.executionType || "On Close" },
+                                                        { setter: setTempExecutionTypeSelection, value: legs[0]?.executionTypeSelection || "Combined" },
                                                     ]
                                                 )
                                             }
@@ -498,11 +586,14 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
                                                     <DialogClose asChild>
                                                         <Button
                                                             onClick={() => {
-                                                                updateLeg(legs[0].id, {
-                                                                    reEntryValue: tempExecutionTypeSelection === "Legwise" ? "" : tempReEntryValue,
-                                                                    executionTypeSelection: tempExecutionTypeSelection,
-                                                                });
+                                                                legs.forEach((leg) =>
+                                                                    updateLeg(leg.id, {
+                                                                        reEntryValue: tempExecutionTypeSelection === "Legwise" ? "" : tempReEntryValue,
+                                                                        executionTypeSelection: tempExecutionTypeSelection,
+                                                                    })
+                                                                );
                                                                 console.log("✅ Re-Entry / Execute Saved");
+                                                                notifyParent();
                                                             }}
                                                         >
                                                             Save
@@ -525,9 +616,9 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
                                                     undefined,
                                                     undefined,
                                                     [
-                                                        { setter: setTempTslMode, value: legs[0].tslMode },
-                                                        { setter: setTempTslSelection, value: legs[0].tslSelection },
-                                                        { setter: setTempTslTrailBy, value: legs[0].tslTrailBy },
+                                                        { setter: setTempTslMode, value: legs[0]?.tslMode || "TSL %" },
+                                                        { setter: setTempTslSelection, value: legs[0]?.tslSelection || "TSL pt" },
+                                                        { setter: setTempTslTrailBy, value: legs[0]?.tslTrailBy || "" },
                                                     ]
                                                 )
                                             }
@@ -587,12 +678,15 @@ const OrderLegs: React.FC<OrderLegsProps> = ({ selectedTemplate }) => {
                                                     <DialogClose asChild>
                                                         <Button
                                                             onClick={() => {
-                                                                updateLeg(legs[0].id, {
-                                                                    tslMode: tempTslMode,
-                                                                    tslSelection: tempTslSelection,
-                                                                    tslTrailBy: tempTslTrailBy,
-                                                                });
+                                                                legs.forEach((leg) =>
+                                                                    updateLeg(leg.id, {
+                                                                        tslMode: tempTslMode,
+                                                                        tslSelection: tempTslSelection,
+                                                                        tslTrailBy: tempTslTrailBy,
+                                                                    })
+                                                                );
                                                                 console.log("✅ Trail SL Saved");
+                                                                notifyParent();
                                                             }}
                                                         >
                                                             Save
