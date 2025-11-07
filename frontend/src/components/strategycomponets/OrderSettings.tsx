@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -7,7 +7,7 @@ import { CircleAlert, ChartNoAxesColumnIncreasing, ChartCandlestick } from "luci
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import ReadymadeTemplates from "@/components/strategycomponets/ReadymadeTemplates";
 
-interface OrderSettingsData {
+export interface OrderSettingsData {
     orderType: string;
     startTime: string;
     squareOff: string;
@@ -15,6 +15,7 @@ interface OrderSettingsData {
     transactionType?: string;
     chartType?: string;
     interval?: string;
+    template?: string;
 }
 
 interface OrderSettingsProps {
@@ -22,7 +23,7 @@ interface OrderSettingsProps {
     template: string;
     onTemplateSelect: (template: string) => void;
     onSettingsChange: (data: OrderSettingsData) => void;
-    initialSettings?: OrderSettingsData; // Pre-populated data from API
+    initialSettings?: OrderSettingsData;
 }
 
 const OrderSettings: React.FC<OrderSettingsProps> = ({
@@ -32,50 +33,55 @@ const OrderSettings: React.FC<OrderSettingsProps> = ({
     onSettingsChange,
     initialSettings,
 }) => {
-    const [orderType, setOrderType] = useState<string>(initialSettings?.orderType || "MIS");
-    const [startTime, setStartTime] = useState<string>(initialSettings?.startTime || "09:15");
-    const [squareOff, setSquareOff] = useState<string>(initialSettings?.squareOff || "15:15");
-    const [days, setDays] = useState<string[]>(initialSettings?.days || []);
-    const [transactionType, setTransactionType] = useState<string>(
-        initialSettings?.transactionType || "bothside"
-    );
-    const [chartType, setChartType] = useState<string>(initialSettings?.chartType || "candle");
-    const [interval, setInterval] = useState<string>(initialSettings?.interval || "1");
+    // Use initialSettings or fallback to defaults
+    const orderType = initialSettings?.orderType ?? "MIS";
+    const startTime = initialSettings?.startTime ?? "09:15";
+    const squareOff = initialSettings?.squareOff ?? "15:15";
+    const days = initialSettings?.days ?? [];
+    const transactionType = initialSettings?.transactionType ?? "bothside";
+    const chartType = initialSettings?.chartType ?? "candle";
+    const interval = initialSettings?.interval ?? "1";
 
-    const settingsData = useMemo(
+    // Build settings data
+    const settingsData = useMemo<OrderSettingsData>(
         () => ({
             orderType,
             startTime,
             squareOff,
             days,
+            template,
             ...(strategyType === "indicatorbased" && {
                 transactionType,
                 chartType,
                 interval,
             }),
         }),
-        [orderType, startTime, squareOff, days, transactionType, chartType, interval, strategyType]
-    );
-
-    // Sync with parent only if settings have changed
-    useEffect(() => {
-        const currentSettings = {
+        [
             orderType,
             startTime,
             squareOff,
             days,
-            ...(strategyType === "indicatorbased" && { transactionType, chartType, interval }),
-        };
-        const isEqual = JSON.stringify(currentSettings) === JSON.stringify(initialSettings);
-        if (!isEqual) {
-            onSettingsChange(settingsData);
-        }
-    }, [settingsData, onSettingsChange, initialSettings, strategyType]);
+            template,
+            transactionType,
+            chartType,
+            interval,
+            strategyType,
+        ]
+    );
+
+    // Notify parent on every change
+    useEffect(() => {
+        onSettingsChange(settingsData);
+    }, [settingsData, onSettingsChange]);
+
+    const update = (updates: Partial<OrderSettingsData>) => {
+        onSettingsChange({ ...settingsData, ...updates });
+    };
 
     return (
         <Card>
             <CardContent className="space-y-4">
-                <div className="flex space-x-4">
+                <div className="flex flex-wrap gap-4">
                     <div>
                         <Label htmlFor="order-type">Order Type</Label>
                         <ToggleGroup
@@ -84,7 +90,7 @@ const OrderSettings: React.FC<OrderSettingsProps> = ({
                             variant="outline"
                             size="lg"
                             value={orderType}
-                            onValueChange={(value) => value && setOrderType(value)}
+                            onValueChange={(v) => v && update({ orderType: v })}
                             className="mt-3"
                         >
                             {["MIS", "CNC", "BTST"].map((type) => (
@@ -94,26 +100,29 @@ const OrderSettings: React.FC<OrderSettingsProps> = ({
                             ))}
                         </ToggleGroup>
                     </div>
+
                     <div>
                         <Label htmlFor="start-time">Start Time</Label>
                         <Input
                             id="start-time"
                             type="time"
                             value={startTime}
-                            onChange={(e) => setStartTime(e.target.value)}
+                            onChange={(e) => update({ startTime: e.target.value })}
                             className="mt-3"
                         />
                     </div>
+
                     <div>
                         <Label htmlFor="square-off">Square Off</Label>
                         <Input
                             id="square-off"
                             type="time"
                             value={squareOff}
-                            onChange={(e) => setSquareOff(e.target.value)}
+                            onChange={(e) => update({ squareOff: e.target.value })}
                             className="mt-3"
                         />
                     </div>
+
                     <div>
                         <Label htmlFor="days">Days</Label>
                         <ToggleGroup
@@ -122,7 +131,7 @@ const OrderSettings: React.FC<OrderSettingsProps> = ({
                             variant="outline"
                             size="lg"
                             value={days}
-                            onValueChange={setDays}
+                            onValueChange={(v) => update({ days: v })}
                             className="mt-3"
                         >
                             {["MON", "TUE", "WED", "THU", "FRI"].map((day) => (
@@ -134,14 +143,20 @@ const OrderSettings: React.FC<OrderSettingsProps> = ({
                     </div>
                 </div>
             </CardContent>
+
             {strategyType === "timebased" ? (
-                <CardContent className="space-y-4 flex items-center space-x-2">
-                    <ReadymadeTemplates onTemplateSelect={onTemplateSelect} />
-                    <div className="text-sm text-gray-400">(Selected: {template || "None"})</div>
+                <CardContent className="flex items-center space-x-2">
+                    <ReadymadeTemplates
+                        selectedTemplate={template}          // <-- current template name
+                        onTemplateSelect={onTemplateSelect} // <-- your existing handler
+                    />
+                    <div className="text-sm text-gray-400">
+                        (Selected: {template || "None"})
+                    </div>
                 </CardContent>
             ) : (
                 <CardContent className="space-y-4">
-                    <div className="flex space-x-4">
+                    <div className="flex flex-wrap gap-4">
                         <div>
                             <Label htmlFor="transaction-type">Transaction Type</Label>
                             <div className="mt-3 flex items-center space-x-3">
@@ -151,7 +166,7 @@ const OrderSettings: React.FC<OrderSettingsProps> = ({
                                     variant="outline"
                                     size="lg"
                                     value={transactionType}
-                                    onValueChange={(value) => value && setTransactionType(value)}
+                                    onValueChange={(v) => v && update({ transactionType: v })}
                                 >
                                     {["bothside", "onlylong", "onlyshort"].map((type) => (
                                         <ToggleGroupItem key={type} value={type} className="text-xs">
@@ -173,44 +188,44 @@ const OrderSettings: React.FC<OrderSettingsProps> = ({
                                 </Tooltip>
                             </div>
                         </div>
+
                         <div>
                             <Label htmlFor="chart-type">Chart Type</Label>
-                            <div className="mt-3 flex">
-                                <ToggleGroup
-                                    id="chart-type"
-                                    type="single"
-                                    variant="outline"
-                                    size="lg"
-                                    value={chartType}
-                                    onValueChange={(value) => value && setChartType(value)}
-                                >
-                                    <ToggleGroupItem value="candle" className="text-xs">
-                                        <ChartNoAxesColumnIncreasing size={28} /> Candle
-                                    </ToggleGroupItem>
-                                    <ToggleGroupItem value="heikinashi" className="text-xs">
-                                        <ChartCandlestick size={28} /> Heikin Ashi
-                                    </ToggleGroupItem>
-                                </ToggleGroup>
-                            </div>
+                            <ToggleGroup
+                                id="chart-type"
+                                type="single"
+                                variant="outline"
+                                size="lg"
+                                value={chartType}
+                                onValueChange={(v) => v && update({ chartType: v })}
+                                className="mt-3"
+                            >
+                                <ToggleGroupItem value="candle" className="text-xs">
+                                    <ChartNoAxesColumnIncreasing size={28} /> Candle
+                                </ToggleGroupItem>
+                                <ToggleGroupItem value="heikinashi" className="text-xs">
+                                    <ChartCandlestick size={28} /> Heikin Ashi
+                                </ToggleGroupItem>
+                            </ToggleGroup>
                         </div>
+
                         <div>
                             <Label htmlFor="interval">Interval</Label>
-                            <div className="mt-3 flex">
-                                <ToggleGroup
-                                    id="interval"
-                                    type="single"
-                                    variant="outline"
-                                    size="lg"
-                                    value={interval}
-                                    onValueChange={(value) => value && setInterval(value)}
-                                >
-                                    {["1", "3", "5", "10", "15", "30", "60"].map((val) => (
-                                        <ToggleGroupItem key={val} value={val} className="text-xs">
-                                            {val === "60" ? "1 H" : `${val} Min`}
-                                        </ToggleGroupItem>
-                                    ))}
-                                </ToggleGroup>
-                            </div>
+                            <ToggleGroup
+                                id="interval"
+                                type="single"
+                                variant="outline"
+                                size="lg"
+                                value={interval}
+                                onValueChange={(v) => v && update({ interval: v })}
+                                className="mt-3"
+                            >
+                                {["1", "3", "5", "10", "15", "30", "60"].map((val) => (
+                                    <ToggleGroupItem key={val} value={val} className="text-xs">
+                                        {val === "60" ? "1 H" : `${val} Min`}
+                                    </ToggleGroupItem>
+                                ))}
+                            </ToggleGroup>
                         </div>
                     </div>
                 </CardContent>

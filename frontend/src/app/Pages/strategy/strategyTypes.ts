@@ -15,13 +15,18 @@ export interface OrderSettingsData {
     transactionType?: string;
     chartType?: string;
     interval?: string;
-    template?: string; // Added to match selectedTemplate usage
+    template?: string;
 }
 
 export interface LegAdvanceFeatures {
     premiumDifference?: { value: number | "" };
-    waitAndTrade?: { value: string | ""; unit: string };
-    reEntryExecute?: { mode: string; value: number | ""; executionType: string; executionTypeSelection: string };
+    waitAndTrade?: { value: number | ""; unit: string };
+    reEntryExecute?: {
+        mode: string;
+        value: number | "";
+        executionType: string;
+        executionTypeSelection: string;
+    };
     trailSL?: { mode: string; values: string[] };
 }
 
@@ -30,13 +35,26 @@ export interface OrderLeg {
     isBuy: "Buy" | "Sell";
     isCE: "CE" | "PE";
     isWeekly: "Weekly" | "Monthly";
+    qty: number;                    // NEW
+    tpQty: number;                  // NEW
+    slQty: number;                  // NEW
     firstSelection: string;
     secondSelection: string;
     tpSelection: string;
     slSelection: string;
     onSelection: string;
     onSelectionSec: string;
-    advanceFeatures: LegAdvanceFeatures;
+    premiumDiffValue?: number | "";
+    waitAndTradeValue?: number | "";
+    waitAndTradeUnit?: string;
+    reEntryMode?: string;
+    reEntryValue?: number | "";
+    executionType?: string;
+    executionTypeSelection?: string;
+    tslMode?: string;
+    tslSelection?: string;
+    tslTrailBy?: string;
+    advanceFeatures?: LegAdvanceFeatures;
 }
 
 export interface OrderLegsData {

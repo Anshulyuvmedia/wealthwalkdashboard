@@ -57,6 +57,7 @@ const AddStrategy: React.FC = () => {
 
     const handleTemplateSelect = useCallback((template: string) => {
         setSelectedTemplate(template);
+        setOrderSettings(prev => ({ ...prev, template })); // ← CRITICAL
     }, []);
 
     const handleOrderLegsChange = useCallback((data: OrderLegsData) => {
@@ -261,6 +262,7 @@ const AddStrategy: React.FC = () => {
                             template={selectedTemplate}
                             onTemplateSelect={handleTemplateSelect}
                             onSettingsChange={handleOrderSettingsChange}
+                            initialSettings={orderSettings}
                         />
                         {strategyType === "timebased" ? (
                             <OrderLegs selectedTemplate={selectedTemplate} onLegsChange={handleOrderLegsChange} />

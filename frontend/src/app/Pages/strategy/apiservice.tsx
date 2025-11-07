@@ -72,7 +72,7 @@ const transformToTdStrategy = (strategy: StrategyPayload): TdStrategy => {
         strategyName: strategy.strategyName,
         Duration: strategy.orderSettings.days.join(", ") || "None",
         durationValue: strategy.orderSettings.days.length || 0,
-        strategyType:  strategy.strategyType,
+        strategyType: strategy.strategyType,
         pricing: 0,
         createdAt: new Date().toISOString(),
         updateAt: new Date().toISOString(),
@@ -96,7 +96,7 @@ export const apiService = {
                     Authorization: `Bearer ${token}`,
                 },
             });
-            console.log('Strategy res: ',response.data);
+            console.log('Strategy res: ', response.data);
             return response.data;
         } catch (error) {
             const err = error as AxiosError;
@@ -115,6 +115,7 @@ export const apiService = {
                     Authorization: `Bearer ${token}`,
                 },
             });
+            // console.log('getStrategy:', response.data);
             return response.data;
         } catch (error) {
             const err = error as AxiosError;

@@ -28,7 +28,7 @@ const EditStrategy: React.FC = () => {
     const [orderSettings, setOrderSettings] = useState<OrderSettingsData>({
         orderType: "MIS",
         startTime: "09:15",
-        squareOff: "03:15",
+        squareOff: "15:15",
         days: [],
         transactionType: "bothside",
         chartType: "heikinashi",
@@ -59,12 +59,12 @@ const EditStrategy: React.FC = () => {
                 setStrategyName(strategy.strategyName || "");
                 setStrategyType((strategy.strategyType as "timebased" | "indicatorbased") || "timebased");
                 setInstruments(strategy.instruments || []);
-                setOrderSettings({
-                    ...orderSettings,
+                setOrderSettings((prev) => ({
+                    ...prev,
                     ...strategy.orderSettings,
                     days: strategy.orderSettings?.days || [],
                     template: strategy.orderSettings?.template || "",
-                });
+                }));
                 setSelectedTemplate(strategy.orderSettings?.template || "");
                 if (strategy.strategyType === "timebased" && strategy.orderLegs) {
                     setOrderLegs(strategy.orderLegs);
@@ -91,10 +91,18 @@ const EditStrategy: React.FC = () => {
         };
         fetchStrategy();
     }, [id]);
-
+    // Sync selectedTemplate with orderSettings.template
+    useEffect(() => {
+        if (orderSettings.template) {
+            setSelectedTemplate(orderSettings.template);
+        }
+    }, [orderSettings.template]);
     // Handlers
     const handleOrderSettingsChange = useCallback((data: OrderSettingsData) => {
-        setOrderSettings((prev) => (JSON.stringify(prev) !== JSON.stringify(data) ? data : prev));
+        setOrderSettings(data);
+        if (data.template) {
+            setSelectedTemplate(data.template);
+        }
     }, []);
 
     const handleTemplateSelect = useCallback((template: string) => {
@@ -146,12 +154,17 @@ const EditStrategy: React.FC = () => {
                 setStrategyType((strategy.strategyType as "timebased" | "indicatorbased") || "timebased");
                 setInstruments(strategy.instruments || []);
                 setOrderSettings({
-                    ...orderSettings,
-                    ...strategy.orderSettings,
-                    days: strategy.orderSettings?.days || [],
-                    template: strategy.orderSettings?.template || "",
+                    orderType: strategy.orderSettings?.orderType ?? "MIS",
+                    startTime: strategy.orderSettings?.startTime ?? "09:15",
+                    squareOff: strategy.orderSettings?.squareOff ?? "15:15",
+                    days: strategy.orderSettings?.days ?? [],
+                    transactionType: strategy.orderSettings?.transactionType ?? "bothside",
+                    chartType: strategy.orderSettings?.chartType ?? "candle",
+                    interval: strategy.orderSettings?.interval ?? "1",
+                    template: strategy.orderSettings?.template ?? "",
                 });
-                setSelectedTemplate(strategy.orderSettings?.template || "");
+
+                setSelectedTemplate(strategy.orderSettings?.template ?? "");
                 if (strategy.strategyType === "timebased" && strategy.orderLegs) {
                     setOrderLegs(strategy.orderLegs);
                 }
@@ -201,6 +214,20 @@ const EditStrategy: React.FC = () => {
         if (strategyType === "timebased" && (!orderLegs || orderLegs.legs.length === 0)) {
             toast.error("Please configure at least one order leg for time-based strategy.");
             return;
+        }
+        if (strategyType === "timebased" && orderLegs) {
+            if (orderLegs.legs.length === 0) {
+                toast.error("At least one leg is required.");
+                return;
+            }
+            if (orderLegs.legs.some(l => l.qty <= 0)) {
+                toast.error("Leg quantity must be > 0");
+                return;
+            }
+            if (orderLegs.legs.some(l => l.slQty < 0 || l.tpQty < 0)) {
+                toast.error("SL/TP quantity cannot be negative");
+                return;
+            }
         }
         if (strategyType === "indicatorbased") {
             if (optionPositionBuilder.positions.length === 0) {
@@ -259,7 +286,13 @@ const EditStrategy: React.FC = () => {
             navigate("/strategy");
         } catch (error) {
             console.error("Error updating strategy:", error);
-            toast.error(error.message || "Failed to update strategy.");
+            const errMsg =
+                error instanceof Error
+                    ? error.message
+                    : typeof error === "string"
+                        ? error
+                        : "Failed to update strategy.";
+            toast.error(errMsg);
         }
     };
 
@@ -324,7 +357,7 @@ const EditStrategy: React.FC = () => {
                             <OrderLegs
                                 selectedTemplate={selectedTemplate}
                                 onLegsChange={handleOrderLegsChange}
-                                initialData={orderLegs ? [{ orderLegs }] : undefined}
+                                initialData={orderLegs ?? undefined}
                             />
                         ) : (
                             <>

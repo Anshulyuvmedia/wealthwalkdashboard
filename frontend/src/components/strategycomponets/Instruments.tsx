@@ -64,13 +64,19 @@ const Instruments: React.FC<InstrumentsProps> = ({
     const [marketType, setMarketType] = useState("options");
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedInstruments, setSelectedInstruments] = useState<InstrumentItem[]>([]);
+    const [open, setOpen] = useState(false);
 
-    // Initialize with API data or empty array only if different
+
     useEffect(() => {
-        if (JSON.stringify(selectedInstruments) !== JSON.stringify(initialInstruments)) {
+        if (initialInstruments && initialInstruments.length > 0 && selectedInstruments.length === 0) {
             setSelectedInstruments(initialInstruments);
         }
     }, [initialInstruments]);
+    useEffect(() => {
+        if (selectedInstruments.some(i => i.type === "options") && open) {
+            setOpen(false);
+        }
+    }, [selectedInstruments, open]);
 
     // Force “options” when time-based
     useEffect(() => {
@@ -85,36 +91,55 @@ const Instruments: React.FC<InstrumentsProps> = ({
         );
     }, [marketType, searchTerm]);
 
-    const handleSelectInstrument = useCallback((instrument: typeof dummyInstruments[0]) => {
-        // Validation rules
-        if (instrument.type === "options" && selectedInstruments.length > 0) {
-            toast.error("You can’t add Options when other instruments are already selected.");
-            return;
-        }
-        if (
-            selectedInstruments.some((i) => i.type === "options") &&
-            instrument.type !== "options"
-        ) {
-            toast.error("You can’t mix Options with other instrument types.");
-            return;
-        }
+    const handleSelectInstrument = useCallback(
+        (instrument: typeof dummyInstruments[0]) => {
+            // OPTIONS: only ONE allowed
+            if (instrument.type === "options") {
+                if (selectedInstruments.some(i => i.type === "options")) {
+                    toast.error("Only one option instrument can be selected.");
+                    return;
+                }
 
-        if (!selectedInstruments.find((i) => i.id === instrument.id)) {
+                const newItem: InstrumentItem = {
+                    id: instrument.id,
+                    type: instrument.type,
+                    name: instrument.name,
+                    price: instrument.price,
+                    exchange: instrument.exchange,
+                    lot: instrument.lotSize ?? 25,
+                };
+                const updated = [newItem];
+                setSelectedInstruments(updated);
+                onInstrumentsChange(updated);
+                setOpen(false);
+                return;
+            }
+
+            // NON‑OPTIONS: multiple allowed
+            if (selectedInstruments.some(i => i.type === "options")) {
+                toast.error("You can’t mix Options with other instrument types.");
+                return;
+            }
+
+            if (selectedInstruments.find(i => i.id === instrument.id)) {
+                return; // duplicate – already blocked by UI
+            }
+
             const newItem: InstrumentItem = {
                 id: instrument.id,
                 type: instrument.type,
                 name: instrument.name,
                 price: instrument.price,
                 exchange: instrument.exchange,
-                ...(instrument.type === "options"
-                    ? { lot: instrument.lotSize ?? 25 }
-                    : { qty: 1 }),
+                qty: 1,
             };
-            const updatedInstruments = [...selectedInstruments, newItem];
-            setSelectedInstruments(updatedInstruments);
-            onInstrumentsChange(updatedInstruments); // Sync with parent
-        }
-    }, [selectedInstruments, onInstrumentsChange]);
+            const updated = [...selectedInstruments, newItem];
+            setSelectedInstruments(updated);
+            onInstrumentsChange(updated);
+            setOpen(false);
+        },
+        [selectedInstruments, onInstrumentsChange]
+    );
 
     const handleRemoveInstrument = useCallback((id: number) => {
         const updatedInstruments = selectedInstruments.filter((i) => i.id !== id);
@@ -186,7 +211,7 @@ const Instruments: React.FC<InstrumentsProps> = ({
 
                     {/* Add-button is hidden when an option is already selected */}
                     {!selectedInstruments.some((i) => i.type === "options") && (
-                        <Dialog open={false} onOpenChange={(open) => setOpen(open)}>
+                        <Dialog open={open} onOpenChange={setOpen}>
                             <DialogTrigger asChild>
                                 <div className="w-44 hover:bg-gray-800 hover:text-white hover:shadow-sm p-3 rounded-lg border-2 border-dashed flex flex-col justify-center items-center shadow-md cursor-pointer transition-all">
                                     <PlusCircle className="mb-2 h-8 w-8" />
@@ -249,15 +274,30 @@ const Instruments: React.FC<InstrumentsProps> = ({
 
                                     <div className="max-h-64 overflow-y-auto mt-3 space-y-2">
                                         {filteredInstruments.length > 0 ? (
-                                            filteredInstruments.map((item) => (
-                                                <div
-                                                    key={item.id}
-                                                    className="border p-2 rounded-md hover:bg-gray-800 hover:text-white cursor-pointer transition"
-                                                    onClick={() => handleSelectInstrument(item)}
-                                                >
-                                                    {item.name}
-                                                </div>
-                                            ))
+                                            filteredInstruments.map((item) => {
+                                                const isSelected = selectedInstruments.some(i => i.id === item.id);
+
+                                                return (
+                                                    <div
+                                                        key={item.id}
+                                                        className={`
+                                                            border p-2 rounded-md transition
+                                                            ${isSelected
+                                                                ? "text-gray-500 cursor-not-allowed opacity-60"
+                                                                : "hover:bg-gray-800 hover:text-white cursor-pointer"
+                                                            }`}
+                                                        onClick={() => {
+                                                            if (isSelected) {
+                                                                toast.error("This instrument is already selected.");
+                                                                return;
+                                                            }
+                                                            handleSelectInstrument(item);
+                                                        }}
+                                                    >
+                                                        {item.name}
+                                                    </div>
+                                                );
+                                            })
                                         ) : (
                                             <p className="text-sm text-muted-foreground">
                                                 No instruments found.

@@ -38,7 +38,6 @@ interface AdvanceFeatureInputsProps {
     executionOptions: string[];
     trailSlOptions: string[];
     tslOptions: string[];
-    handleSaveAll: (e: React.MouseEvent) => void;
 }
 
 export const AdvanceFeatureInputs: React.FC<AdvanceFeatureInputsProps> = ({
@@ -57,7 +56,6 @@ export const AdvanceFeatureInputs: React.FC<AdvanceFeatureInputsProps> = ({
     setReEntryValue,
     executionType,
     setExecutionType,
-    executionTypeSelection,
     trailSL,
     tslMode,
     setTslMode,
@@ -71,7 +69,7 @@ export const AdvanceFeatureInputs: React.FC<AdvanceFeatureInputsProps> = ({
     tslOptions,
 }) => {
     return (
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
             {premiumDifference && (
                 <div className="grid gap-2">
                     <InputGroup className="[--radius:1rem] flex justify-between">
@@ -159,7 +157,7 @@ export const AdvanceFeatureInputs: React.FC<AdvanceFeatureInputsProps> = ({
                             type="number"
                             value={reEntryValue}
                             onChange={(e) => setReEntryValue(Number(e.target.value) || "")}
-                            disabled={executionTypeSelection === "Legwise"}
+                            // disabled={executionTypeSelection === "Legwise"}
                         />
                         <InputGroupAddon align="inline-end">
                             <DropdownMenu>
@@ -217,14 +215,14 @@ export const AdvanceFeatureInputs: React.FC<AdvanceFeatureInputsProps> = ({
                         <InputGroupInput
                             placeholder="30"
                             className="w-16 bg-black"
-                            type="number"
+                            type="text"
                             value={tslSelection}
                             onChange={(e) => setTslSelection(e.target.value)}
                         />
                         <InputGroupInput
                             placeholder="30"
                             className="w-16 bg-black"
-                            type="number"
+                            type="text"
                             value={tslTrailBy}
                             onChange={(e) => setTslTrailBy(e.target.value)}
                         />

@@ -54,6 +54,7 @@ interface ConditionsProps {
     type: "entry" | "exit";
     onConditionsChange: (data: { conditions: Condition[]; isEnabled?: boolean; useCombinedChart?: boolean }) => void;
     initialConditions?: Condition[]; // Pre-populated data from API
+    initialIsEnabled: boolean;
 }
 
 const Conditions: React.FC<ConditionsProps> = ({
@@ -63,11 +64,13 @@ const Conditions: React.FC<ConditionsProps> = ({
     initialConditions = [],
 }) => {
     const [conditions, setConditions] = useState<Condition[]>([]);
-    const [isExitConditionsEnabled, setIsExitConditionsEnabled] = useState<boolean>(false);
+    const [isExitConditionsEnabled, setIsExitConditionsEnabled] = useState<boolean>(
+        type === "exit" && initialConditions.length > 0
+    );
     const [useCombinedChart, setUseCombinedChart] = useState<boolean>(false);
     const frameworks = [
         { value: "select-indicator", label: "Select Indicator" },
-        { value: "moving-average", label: "Moving Average", type: "input" },
+        { value: "moving-average", label: "Moving Average", type: "select" },
         { value: "vwap", label: "VWAP" },
         { value: "macd", label: "MACD" },
         { value: "rsi", label: "RSI" },
@@ -104,7 +107,7 @@ const Conditions: React.FC<ConditionsProps> = ({
     ];
 
     const getDefaultParams = (indicator: string): IndicatorParams => {
-        const defaultParams: IndicatorParams = {};
+        const defaults: IndicatorParams = {};
         switch (indicator) {
             case "moving-average":
             case "rsi":
@@ -114,62 +117,62 @@ const Conditions: React.FC<ConditionsProps> = ({
             case "negidi":
             case "adx":
             case "atr":
-                defaultParams.period = "10";
-                defaultParams.type = "SMA";
+                defaults.period = "10";
+                defaults.type = "SMA";
                 break;
             case "macd":
             case "macd-signal":
-                defaultParams.fastMA = "12";
-                defaultParams.slowMA = "26";
-                defaultParams.signal = "9";
+                defaults.fastMA = "12";
+                defaults.slowMA = "26";
+                defaults.signal = "9";
                 break;
             case "supertrend":
-                defaultParams.period = "10";
-                defaultParams.multiplier = "3";
+                defaults.period = "10";
+                defaults.multiplier = "3";
                 break;
             case "bollinger-band":
             case "bband-upper":
             case "bband-middle":
             case "bband-bottom":
-                defaultParams.period = "20";
-                defaultParams.stdDeviations = "2";
-                defaultParams.type = "SMA";
-                defaultParams.maType = "SMA";
+                defaults.period = "20";
+                defaults.stdDeviations = "2";
+                defaults.type = "SMA";
+                defaults.maType = "SMA";
                 break;
             case "parabolic-sar":
-                defaultParams.minimumAF = "0.02";
-                defaultParams.maximumAF = "0.2";
+                defaults.minimumAF = "0.02";
+                defaults.maximumAF = "0.2";
                 break;
             case "stochastic":
-                defaultParams.period = "14";
-                defaultParams.type = "Fast";
+                defaults.period = "14";
+                defaults.type = "Fast";
                 break;
             case "number":
-                defaultParams.period = "0";
+                defaults.period = "0";
                 break;
             case "vwap":
-                defaultParams.type = "VWAP";
+                defaults.type = "VWAP";
                 break;
             case "candle":
-                defaultParams.type = "Open";
+                defaults.type = "Close";
                 break;
             case "camrila":
-                defaultParams.type = "R5";
+                defaults.type = "R3";
                 break;
             case "pivot-point":
-                defaultParams.type = "R3";
+                defaults.type = "R3";
                 break;
             case "true-range":
-                defaultParams.type = "Auto";
+                defaults.type = "Auto";
                 break;
             case "linear-regression":
             case "linear-regression-intercept":
-                defaultParams.length = "10";
+                defaults.length = "10";
                 break;
             default:
-                return {};
+                break;
         }
-        return defaultParams;
+        return defaults;
     };
 
     // Initialize with API data or default condition
@@ -204,7 +207,11 @@ const Conditions: React.FC<ConditionsProps> = ({
             isEnabled: type === "exit" ? isExitConditionsEnabled : undefined,
         });
     }, [conditions, isExitConditionsEnabled, useCombinedChart, onConditionsChange, type]);
-
+    useEffect(() => {
+        if (type === "exit") {
+            setIsExitConditionsEnabled(initialConditions.length > 0);
+        }
+    }, [type, initialConditions]);
     const addCondition = () => {
         setConditions([
             ...conditions,
