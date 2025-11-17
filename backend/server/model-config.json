@@ -138,5 +138,9 @@
   "TdStrategy": {
     "dataSource": "mongoDB", 
     "public": true
+  },
+  "Instrument": {
+    "dataSource": "mongoDB",
+    "public": true
   }
 }

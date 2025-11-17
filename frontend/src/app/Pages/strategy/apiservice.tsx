@@ -9,6 +9,16 @@ interface TokenData {
     created: string;
     userId: string;
 }
+interface InstrumentItem {
+    id: number;
+    type: string;
+    name: string;
+    price: number;
+    exchange: string;
+    lot?: number;      // preferred
+    qty?: number;
+    lotSize?: number;  // fallback from dummy / old DB
+}
 
 const apiClient = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api",
@@ -182,6 +192,23 @@ export const apiService = {
             console.error(`Error deleting strategy ${id}:`, err);
             toast.error(errorMessage);
             throw new Error(errorMessage);
+        }
+    },
+
+    getInstruments: async (search?: string, type?: string): Promise<InstrumentItem[]> => {
+        try {
+            const params: any = {};
+            if (search) params.search = search;
+            if (type) params.type = type;
+
+            // NOTE: plural is "Instruments" → /Instruments/fetch
+            const { data } = await apiClient.get<InstrumentItem[]>("/Instruments/fetch", { params });
+            return data;
+        } catch (error) {
+            const err = error as AxiosError;
+            console.error("Instrument fetch error:", err.response?.data);
+            toast.error("Failed to load instruments");
+            return [];
         }
     },
 };

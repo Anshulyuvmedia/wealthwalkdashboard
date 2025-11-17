@@ -35,7 +35,7 @@ const OrderSettings: React.FC<OrderSettingsProps> = ({
 }) => {
     // Use initialSettings or fallback to defaults
     const orderType = initialSettings?.orderType ?? "MIS";
-    const startTime = initialSettings?.startTime ?? "09:15";
+    const startTime = initialSettings?.startTime ?? "09:16";
     const squareOff = initialSettings?.squareOff ?? "15:15";
     const days = initialSettings?.days ?? [];
     const transactionType = initialSettings?.transactionType ?? "bothside";

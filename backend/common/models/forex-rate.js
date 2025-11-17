@@ -59,7 +59,7 @@ module.exports = function (ForexRate) {
                 unmatched.push({ symbol, reason: `Unknown contract_type: ${product.contract_type}` });
             }
         });
-        console.log('Unmatched products:', unmatched);
+        // console.log('Unmatched products:', unmatched);
         return categories;
     }
 
@@ -68,14 +68,14 @@ module.exports = function (ForexRate) {
         try {
             const symbols = 'EUR/USD,GBP/USD,USD/JPY,USD/CHF';
             const response = await axios.get(`${TWELVE_DATA_BASE_URL}/quote?symbol=${symbols}&apikey=${API_KEY}`);
-            console.log('Raw Twelve Data forex response:', JSON.stringify(response.data, null, 2));
+            // console.log('Raw Twelve Data forex response:', JSON.stringify(response.data, null, 2));
             const quotes = response.data;
             const forexResults = [];
             const failedSymbols = [];
 
             for (const [symbol, quote] of Object.entries(quotes)) {
                 if (quote.status === 'error') {
-                    console.warn(`Error for symbol ${symbol}: ${quote.message}`);
+                    // console.warn(`Error for symbol ${symbol}: ${quote.message}`);
                     failedSymbols.push(symbol);
                     continue;
                 }
@@ -119,7 +119,7 @@ module.exports = function (ForexRate) {
                 }
             }
 
-            console.log('Fetched forex data from Twelve Data:', forexResults);
+            // console.log('Fetched forex data from Twelve Data:', forexResults);
             return forexResults;
         } catch (error) {
             console.error('Error fetching forex from Twelve Data:', error.message, error.response?.data);
@@ -145,7 +145,7 @@ module.exports = function (ForexRate) {
         try {
             const symbols = 'XAU/USD,WTI/USD'; // WTI Crude Oil; swap to 'BRENT/USD' if preferred
             const response = await axios.get(`${TWELVE_DATA_BASE_URL}/quote?symbol=${symbols}&apikey=${API_KEY}`);
-            console.log('Raw Twelve Data commodity response:', JSON.stringify(response.data, null, 2));
+            // console.log('Raw Twelve Data commodity response:', JSON.stringify(response.data, null, 2));
             const quotes = response.data;
             const commodityResults = [];
             const failedSymbols = [];

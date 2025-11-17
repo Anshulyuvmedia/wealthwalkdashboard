@@ -27,8 +27,8 @@ const AddStrategy: React.FC = () => {
     const [instruments, setInstruments] = useState<InstrumentItem[]>([]);
     const [orderSettings, setOrderSettings] = useState<OrderSettingsData>({
         orderType: "MIS",
-        startTime: "09:15",
-        squareOff: "03:15",
+        startTime: "09:16",
+        squareOff: "15:15",
         days: [],
         transactionType: "bothside",
         chartType: "heikinashi",
@@ -102,7 +102,7 @@ const AddStrategy: React.FC = () => {
         setOrderSettings({
             orderType: "MIS",
             startTime: "09:15",
-            squareOff: "03:15",
+            squareOff: "15:15",
             days: [],
             transactionType: "bothside",
             chartType: "heikinashi",

@@ -1,0 +1,90 @@
+{
+    "name": "Instrument",
+    "plural": "Instruments",
+    "base": "PersistedModel",
+    "idInjection": true,
+    "options": {
+        "validateUpsert": true
+    },
+    "properties": {
+        "id": {
+            "type": "number",
+            "id": true,
+            "generated": true
+        },
+        "name": {
+            "type": "string",
+            "required": true
+        },
+        "type": {
+            "type": "string",
+            "required": true
+        },
+        "price": {
+            "type": "number",
+            "default": 0
+        },
+        "exchange": {
+            "type": "string",
+            "default": "NSE"
+        },
+        "lot": {
+            "type": "number",
+            "default": 1
+        },
+        "qty": {
+            "type": "number",
+            "default": 1
+        },
+        "fetchedAt": {
+            "type": "date"
+        },
+        "source": {
+            "type": "string",
+            "default": "nse"
+        },
+        "cacheKey": {
+            "type": "string",
+            "index": {
+                "unique": true
+            }
+        },
+        "data": {
+            "type": "object",
+            "required": true,
+            "options": {
+                "validate": false
+            }
+        },
+        "expiresAt": {
+            "type": "date",
+            "required": true,
+            "index": true
+        }
+    },
+    "validations": [],
+    "relations": {},
+    "acls": [
+        {
+            "accessType": "*",
+            "principalType": "ROLE",
+            "principalId": "$everyone",
+            "permission": "ALLOW",
+            "property": "fetchInstruments"
+        },
+        {
+            "accessType": "READ",
+            "principalType": "ROLE",
+            "principalId": "$everyone",
+            "permission": "ALLOW"
+        },
+        {
+            "accessType": "*",
+            "principalType": "ROLE",
+            "principalId": "$unauthenticated",
+            "permission": "ALLOW",
+            "property": "fetchInstruments"
+        }
+    ],
+    "methods": {}
+}
