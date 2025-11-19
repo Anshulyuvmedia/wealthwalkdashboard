@@ -6,9 +6,9 @@ export interface OrderLeg {
     isBuy: "Buy" | "Sell";
     isCE: "CE" | "PE";
     isWeekly: "Weekly" | "Monthly";
-    qty: number;                    // NEW
-    tpQty: number;                  // NEW
-    slQty: number;                  // NEW
+    qty: number;
+    tpQty: number;
+    slQty: number;
     firstSelection: string;
     secondSelection: string;
     tpSelection: string;

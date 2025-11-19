@@ -142,5 +142,9 @@
   "Instrument": {
     "dataSource": "mongoDB",
     "public": true
+  },
+    "IndicatorStrategy": {
+    "dataSource": "mongoDB",
+    "public": true
   }
 }
