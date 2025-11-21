@@ -1,0 +1,102 @@
+{
+    "name": "StrategyExecution",
+    "plural": "StrategyExecutions",
+    "base": "PersistedModel",
+    "idInjection": true,
+    "options": {
+        "validateUpsert": true
+    },
+    "properties": {
+        "strategyId": {
+            "type": "string",
+            "required": true,
+            "index": true
+        },
+        "strategyName": {
+            "type": "string",
+            "required": true
+        },
+        "broker": {
+            "type": "string",
+            "required": true
+        },
+        "quantity": {
+            "type": "number",
+            "required": false
+        },
+        "status": {
+            "type": "string",
+            "required": true,
+            "default": "queued",
+            "enum": [
+                "queued",
+                "running",
+                "paused",
+                "completed",
+                "failed",
+                "cancelled"
+            ]
+        },
+        "executedAt": {
+            "type": "date",
+            "defaultFn": "now"
+        },
+        "completedAt": {
+            "type": "date",
+            "required": false
+        },
+        "cancelledAt": {
+            "type": "date",
+            "required": false
+        },
+        "exitReason": {
+            "type": "string",
+            "required": false
+        },
+        "userId": {
+            "type": "string",
+            "required": true,
+            "index": true
+        }
+    },
+    "validations": [],
+    "relations": {
+        "user": {
+            "type": "belongsTo",
+            "model": "TdUsers",
+            "foreignKey": "userId"
+        },
+        "strategy": {
+            "type": "belongsTo",
+            "model": "TdStrategy",
+            "foreignKey": "strategyId"
+        }
+    },
+    "acls": [
+        {
+            "accessType": "*",
+            "principalType": "ROLE",
+            "principalId": "$owner",
+            "permission": "ALLOW"
+        },
+        {
+            "accessType": "EXECUTE",
+            "principalType": "ROLE",
+            "principalId": "$authenticated",
+            "permission": "ALLOW"
+        },
+        {
+            "accessType": "READ",
+            "principalType": "ROLE",
+            "principalId": "admin",
+            "permission": "ALLOW"
+        },
+        {
+            "accessType": "WRITE",
+            "principalType": "ROLE",
+            "principalId": "$everyone",
+            "permission": "DENY"
+        }
+    ],
+    "methods": {}
+}

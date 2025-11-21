@@ -155,7 +155,8 @@ app.use((req, res, next) => {
     loopback.token({
       model: app.models.AccessToken,
       currentUserLiteral: 'me',
-      searchDefaultTokenKeys: false,
+      searchDefaultTokenKeys: true,
+      params: ['access_token'],
       headers: ['Authorization', 'authorization', 'AUTHORIZATION'],
       debug: true
     })(req, res, next);

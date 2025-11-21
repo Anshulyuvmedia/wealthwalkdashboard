@@ -146,5 +146,9 @@
     "IndicatorStrategy": {
     "dataSource": "mongoDB",
     "public": true
+  },
+    "StrategyExecution": {
+    "dataSource": "mongoDB",
+    "public": true
   }
 }
