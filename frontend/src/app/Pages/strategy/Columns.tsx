@@ -12,7 +12,7 @@ import {
 import { apiService } from "./apiservice";
 import { toast } from "sonner";
 import type { TdStrategy } from "./strategyTypes";
-import { IconTrashX, IconEdit, IconCopy } from "@tabler/icons-react";
+import { IconTrashX, IconEdit, IconCopy, IconPlayerPlay  } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
 
@@ -176,6 +176,14 @@ export const columns: ColumnDef<TdStrategy>[] = [
             return (
                 <div className="flex gap-2">
                     {/* Edit Button */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/backTesting/${row.original.id}`)}
+                        className="border-green-600 dark:border-green-500 text-green-200 dark:text-white-300 hover:bg-green-700 dark:hover:bg-green-600"
+                    >
+                        <IconPlayerPlay className="w-4 h-4 mr-1" /> Backtest
+                    </Button>
                     <Button
                         variant="outline"
                         size="sm"

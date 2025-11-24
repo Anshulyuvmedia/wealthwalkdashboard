@@ -17,6 +17,7 @@ import EditSignal from "@/app/Pages/signals/[id]";
 import Strategy from "@/app/Pages/strategy/strategypage";
 import AddStrategy from "@/app/Pages/strategy/addStrategy";
 import EditStrategy from "@/app/Pages/strategy/EditStrategy";
+import BackTesting from "@/app/Pages/strategy/backTesting";
 
 const authProtectedRoutes = [
   { path: "/", component: <Dashboard /> },
@@ -42,6 +43,8 @@ const authProtectedRoutes = [
   { path: "/freesignals/add", component: <AddSignal /> },
   { path: "/paidsignals/edit/:id", component: <EditSignal /> },
   { path: "/freesignals/edit/:id", component: <EditSignal /> },
+
+  { path: "/backTesting/:id", component: <BackTesting /> },
 ];
 
 const publicRoutes = [
