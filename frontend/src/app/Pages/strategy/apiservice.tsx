@@ -1,7 +1,7 @@
 // src/services/apiService.tsx
 import axios, { AxiosError } from "axios";
 import { toast } from "sonner";
-import type { StrategyPayload, TdStrategy } from "./strategyTypes";
+import type { StrategyPayload, TdStrategy, BacktestResult, PeriodValue } from "./strategyTypes";
 
 interface TokenData {
     id: string;
@@ -19,6 +19,8 @@ interface InstrumentItem {
     qty?: number;
     lotSize?: number;  // fallback from dummy / old DB
 }
+// Global cancel token — shared across all backtests
+export let activeBacktestAbort: AbortController | null = null;
 
 const apiClient = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api",
@@ -106,7 +108,7 @@ export const apiService = {
                     Authorization: `Bearer ${token}`,
                 },
             });
-            console.log('Strategy res: ', response.data);
+            // console.log('Strategy res: ', response.data);
             return response.data;
         } catch (error) {
             const err = error as AxiosError;
@@ -161,6 +163,7 @@ export const apiService = {
         try {
             const token = await getValidToken();
             const payload = transformToTdStrategy(strategy as StrategyPayload);
+            // console.log('payload', payload);
             const response = await apiClient.put<TdStrategy>(`/TdStrategys/${id}`, payload, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -209,6 +212,66 @@ export const apiService = {
             console.error("Instrument fetch error:", err.response?.data);
             toast.error("Failed to load instruments");
             return [];
+        }
+    },
+
+    runBacktest: async (
+        strategyId: string,
+        options: {
+            period?: PeriodValue;
+            startDate?: string;
+            endDate?: string;
+        } = {}
+    ): Promise<BacktestResult> => {
+        // Cancel previous backtest
+        if (activeBacktestAbort) {
+            activeBacktestAbort.abort("New backtest started");
+        }
+
+        const controller = new AbortController();
+        activeBacktestAbort = controller;
+
+        try {
+            console.log("%cBacktest Started", "color: #8b5cf6; font-weight: bold;", strategyId, options);
+
+            const { data } = await apiClient.post<BacktestResult>(
+                `/backtests/run/${strategyId}`,
+                options,
+                {
+                    signal: controller.signal,   // Modern way
+                    timeout: 600000,
+                }
+            );
+
+            toast.success(
+                `Backtest complete • ${data.trades.length} trades • ₹${Math.round(data.totalPL).toLocaleString()} P&L`
+            );
+
+            return data;
+        } catch (error: any) {
+            if (error.name === "CanceledError" || error.name === "AbortError") {
+                console.log("Backtest cancelled by user");
+                throw { cancelled: true };
+            }
+
+            const msg =
+                error.response?.data?.error?.message ||
+                error.message ||
+                "Backtest failed";
+
+            if (msg.includes("data") || msg.includes("symbol")) {
+                toast.error("No market data for this period/symbol");
+            } else if (msg.includes("timeout")) {
+                toast.error("Backtest timed out — try a shorter period");
+            } else {
+                toast.error(msg);
+            }
+
+            throw error;
+        } finally {
+            if (activeBacktestAbort === controller) {
+                activeBacktestAbort = null;
+            }
         }
     },
 };

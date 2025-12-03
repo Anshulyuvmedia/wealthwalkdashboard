@@ -20,6 +20,16 @@ import { apiService } from "./apiservice";
 const EditStrategy: React.FC = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
+    const defaultRiskManagement: RiskManagementData = {
+        profit: "",
+        loss: "",
+        total: "",
+        time: "",
+        trailingType: "notrailing",
+        lockFixProfit: { ifProfit: "", profitAt: "" },
+        trailProfit: { everyIncrease: "", trailProfitBy: "" },
+        lockAndTrail: { ifProfit: "", profitAt: "", everyIncrease: "", trailProfitBy: "" },
+    };
 
     // State
     const [strategyType, setStrategyType] = useState<"timebased" | "indicatorbased">("timebased");
@@ -49,32 +59,72 @@ const EditStrategy: React.FC = () => {
     const [entryConditions, setEntryConditions] = useState<EntryConditionsData>({ conditions: [] });
     const [exitConditions, setExitConditions] = useState<ExitConditionsData>({ conditions: [], isEnabled: false });
     const [optionPositionBuilder, setOptionPositionBuilder] = useState<OptionPositionBuilderData>({ positions: [] });
-
     // Fetch strategy data on component mount
     useEffect(() => {
         const fetchStrategy = async () => {
             if (!id) return;
+
             try {
                 const strategy = await apiService.getStrategy(id);
+
+                // 1. Basic fields
                 setStrategyName(strategy.strategyName || "");
                 setStrategyType((strategy.strategyType as "timebased" | "indicatorbased") || "timebased");
                 setInstruments(strategy.instruments || []);
-                setOrderSettings((prev) => ({
-                    ...prev,
-                    ...strategy.orderSettings,
-                    days: strategy.orderSettings?.days || [],
-                    template: strategy.orderSettings?.template || "",
-                }));
-                setSelectedTemplate(strategy.orderSettings?.template || "");
-                if (strategy.strategyType === "timebased" && strategy.orderLegs) {
+
+                // 2. Order Settings — WITH FULL DEFAULTS
+                const savedOrderSettings: OrderSettingsData = strategy.orderSettings || {
+                    orderType: "MIS",
+                    startTime: "09:15",
+                    squareOff: "15:15",
+                    days: [],
+                    transactionType: "bothside",
+                    chartType: "heikinashi",
+                    interval: "10",
+                    template: "",
+                };
+
+                setOrderSettings({
+                    orderType: savedOrderSettings.orderType,
+                    startTime: savedOrderSettings.startTime,
+                    squareOff: savedOrderSettings.squareOff,
+                    days: savedOrderSettings.days,
+                    transactionType: savedOrderSettings.transactionType,
+                    chartType: savedOrderSettings.chartType,
+                    interval: savedOrderSettings.interval,
+                    template: savedOrderSettings.template || "",
+                });
+                setSelectedTemplate(savedOrderSettings.template || "");
+
+                // 3. Order Legs
+                if (strategy.orderLegs) {
                     setOrderLegs(strategy.orderLegs);
+                } else if (strategy.strategyType === "timebased") {
+                    setOrderLegs({
+                        advanceFeatures: {
+                            moveSLToCost: false,
+                            exitAllOnSLTgt: false,
+                            prePunchSL: false,
+                            premiumDifference: { enabled: false },
+                            waitAndTrade: { enabled: false },
+                            reEntryExecute: { enabled: false },
+                            trailSL: { enabled: false },
+                        },
+                        legs: []
+                    });
+                } else {
+                    setOrderLegs(null);
                 }
+
+                // 4. Indicator-based
                 if (strategy.strategyType === "indicatorbased") {
                     setOptionPositionBuilder(strategy.optionPositionBuilder || { positions: [] });
                     setEntryConditions(strategy.entryConditions || { conditions: [] });
                     setExitConditions(strategy.exitConditions || { conditions: [], isEnabled: false });
                 }
-                setRiskManagementData(strategy.riskManagement || {
+
+                // 5. Risk Management — FULLY TYPE-SAFE
+                const savedRisk = strategy.riskManagement || {
                     profit: "",
                     loss: "",
                     total: "",
@@ -83,12 +133,36 @@ const EditStrategy: React.FC = () => {
                     lockFixProfit: { ifProfit: "", profitAt: "" },
                     trailProfit: { everyIncrease: "", trailProfitBy: "" },
                     lockAndTrail: { ifProfit: "", profitAt: "", everyIncrease: "", trailProfitBy: "" },
+                } as RiskManagementData;
+
+                setRiskManagementData({
+                    profit: savedRisk.profit,
+                    loss: savedRisk.loss,
+                    total: savedRisk.total,
+                    time: savedRisk.time,
+                    trailingType: savedRisk.trailingType,
+                    lockFixProfit: {
+                        ifProfit: savedRisk.lockFixProfit.ifProfit,
+                        profitAt: savedRisk.lockFixProfit.profitAt,
+                    },
+                    trailProfit: {
+                        everyIncrease: savedRisk.trailProfit.everyIncrease,
+                        trailProfitBy: savedRisk.trailProfit.trailProfitBy,
+                    },
+                    lockAndTrail: {
+                        ifProfit: savedRisk.lockAndTrail.ifProfit,
+                        profitAt: savedRisk.lockAndTrail.profitAt,
+                        everyIncrease: savedRisk.lockAndTrail.everyIncrease,
+                        trailProfitBy: savedRisk.lockAndTrail.trailProfitBy,
+                    },
                 });
+
             } catch (error) {
                 console.error("Error fetching strategy:", error);
                 toast.error("Failed to load strategy data.");
             }
         };
+
         fetchStrategy();
     }, [id]);
     // Sync selectedTemplate with orderSettings.template
@@ -173,15 +247,27 @@ const EditStrategy: React.FC = () => {
                     setEntryConditions(strategy.entryConditions || { conditions: [] });
                     setExitConditions(strategy.exitConditions || { conditions: [], isEnabled: false });
                 }
-                setRiskManagementData(strategy.riskManagement || {
-                    profit: "",
-                    loss: "",
-                    total: "",
-                    time: "",
-                    trailingType: "notrailing",
-                    lockFixProfit: { ifProfit: "", profitAt: "" },
-                    trailProfit: { everyIncrease: "", trailProfitBy: "" },
-                    lockAndTrail: { ifProfit: "", profitAt: "", everyIncrease: "", trailProfitBy: "" },
+                const resetRisk = strategy.riskManagement || defaultRiskManagement;
+                setRiskManagementData({
+                    profit: resetRisk.profit,
+                    loss: resetRisk.loss,
+                    total: resetRisk.total,
+                    time: resetRisk.time,
+                    trailingType: resetRisk.trailingType,
+                    lockFixProfit: {
+                        ifProfit: resetRisk.lockFixProfit.ifProfit,
+                        profitAt: resetRisk.lockFixProfit.profitAt,
+                    },
+                    trailProfit: {
+                        everyIncrease: resetRisk.trailProfit.everyIncrease,
+                        trailProfitBy: resetRisk.trailProfit.trailProfitBy,
+                    },
+                    lockAndTrail: {
+                        ifProfit: resetRisk.lockAndTrail.ifProfit,
+                        profitAt: resetRisk.lockAndTrail.profitAt,
+                        everyIncrease: resetRisk.lockAndTrail.everyIncrease,
+                        trailProfitBy: resetRisk.lockAndTrail.trailProfitBy,
+                    },
                 });
                 toast.success("Form reset to original values!");
             } catch (error) {
@@ -358,6 +444,7 @@ const EditStrategy: React.FC = () => {
                                 selectedTemplate={selectedTemplate}
                                 onLegsChange={handleOrderLegsChange}
                                 initialData={orderLegs ?? undefined}
+                                isEditMode={true}
                             />
                         ) : (
                             <>

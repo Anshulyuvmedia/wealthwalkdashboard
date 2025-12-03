@@ -1,0 +1,39 @@
+{
+    "name": "Screener",
+    "base": "PersistedModel",
+    "idInjection": true,
+    "options": {
+        "validateUpsert": true
+    },
+    "properties": {
+        "title": {
+            "type": "string",
+            "required": true
+        },
+        "subtitle": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string",
+            "required": true
+        },
+        "icon": {
+            "type": "string"
+        },
+        "order": {
+            "type": "number",
+            "default": 99
+        }
+    },
+    "validations": [],
+    "relations": {},
+    "acls": [
+        {
+            "accessType": "*",
+            "principalType": "ROLE",
+            "principalId": "$everyone",
+            "permission": "ALLOW"
+        }
+    ],
+    "methods": {}
+}

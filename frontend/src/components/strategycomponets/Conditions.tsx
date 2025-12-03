@@ -54,7 +54,7 @@ interface ConditionsProps {
     type: "entry" | "exit";
     onConditionsChange: (data: { conditions: Condition[]; isEnabled?: boolean; useCombinedChart?: boolean }) => void;
     initialConditions?: Condition[]; // Pre-populated data from API
-    initialIsEnabled: boolean;
+    initialIsEnabled?: boolean;
 }
 
 const Conditions: React.FC<ConditionsProps> = ({
@@ -62,10 +62,11 @@ const Conditions: React.FC<ConditionsProps> = ({
     type,
     onConditionsChange,
     initialConditions = [],
+    initialIsEnabled = false
 }) => {
     const [conditions, setConditions] = useState<Condition[]>([]);
     const [isExitConditionsEnabled, setIsExitConditionsEnabled] = useState<boolean>(
-        type === "exit" && initialConditions.length > 0
+        type === "exit" ? initialIsEnabled : true
     );
     const [useCombinedChart, setUseCombinedChart] = useState<boolean>(false);
     const frameworks = [
@@ -208,10 +209,10 @@ const Conditions: React.FC<ConditionsProps> = ({
         });
     }, [conditions, isExitConditionsEnabled, useCombinedChart, onConditionsChange, type]);
     useEffect(() => {
-        if (type === "exit") {
-            setIsExitConditionsEnabled(initialConditions.length > 0);
+        if (initialConditions.length > 0) {
+            setConditions(initialConditions);
         }
-    }, [type, initialConditions]);
+    }, [initialConditions]);
     const addCondition = () => {
         setConditions([
             ...conditions,

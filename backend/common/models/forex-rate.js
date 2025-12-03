@@ -4,7 +4,7 @@ const axios = require('axios');
 module.exports = function (ForexRate) {
     const BASE_URL = 'https://api.india.delta.exchange/v2';
     const TWELVE_DATA_BASE_URL = 'https://api.twelvedata.com'; // Twelve Data API base
-    const API_KEY = '501ed2603fb947f6aff242d6897678f1'; // Replace with your Twelve Data API key
+    const API_KEY = process.env.TWELVE_DATA_API_KEY;
 
     async function getProducts(contractTypes = 'perpetual_futures,call_options,put_options') {
         try {

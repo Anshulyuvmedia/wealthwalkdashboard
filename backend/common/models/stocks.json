@@ -1,0 +1,40 @@
+{
+    "name": "Stocks",
+    "base": "PersistedModel",
+    "idInjection": true,
+    "options": {
+        "validateUpsert": true
+    },
+    "properties": {
+        "id": {
+            "type": "string",
+            "id": true,
+            "generated": true,
+            "mongodb": {
+                "dataType": "ObjectID"
+            }
+        },
+        "symbol": {
+            "type": "string",
+            "required": true
+        },
+        "companyName": "string",
+        "price": "number",
+        "changePercent": "number",
+        "rsi": "number",
+        "volume": "number",
+        "isBreakout": "boolean",
+        "updatedAt": "date"
+    },
+    "validations": [],
+    "relations": {},
+    "acls": [
+        {
+            "accessType": "*",
+            "principalType": "ROLE",
+            "principalId": "$everyone",
+            "permission": "ALLOW"
+        }
+    ],
+    "methods": {}
+}

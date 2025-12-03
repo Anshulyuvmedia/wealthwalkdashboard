@@ -39,7 +39,8 @@
     "strong-error-handler": "^4.0.8",
     "tough-cookie": "^5.1.2",
     "util.promisify": "^1.1.2",
-    "xml2js": "^0.6.2"
+    "xml2js": "^0.6.2",
+    "yfinance": "^0.0.6"
   },
   "devDependencies": {
     "eslint": "^8.57.1",

@@ -1,0 +1,109 @@
+{
+    "name": "backtest",
+    "base": "PersistedModel",
+    "idInjection": true,
+    "options": {
+        "validateUpsert": true
+    },
+    "properties": {
+        "strategyId": {
+            "type": "string",
+            "required": true,
+            "index": true
+        },
+        "strategyName": {
+            "type": "string",
+            "required": true
+        },
+        "userId": {
+            "type": "string",
+            "required": true
+        },
+        "startDate": {
+            "type": "date",
+            "required": true
+        },
+        "endDate": {
+            "type": "date",
+            "required": true
+        },
+        "totalTrades": {
+            "type": "number",
+            "default": 0
+        },
+        "winRate": {
+            "type": "number",
+            "default": 0
+        },
+        "totalPL": {
+            "type": "number",
+            "default": 0
+        },
+        "maxDrawdown": {
+            "type": "number",
+            "default": 0
+        },
+        "sharpeRatio": {
+            "type": "number",
+            "default": 0
+        },
+        "cagr": {
+            "type": "number",
+            "default": 0
+        },
+        "equityCurve": {
+            "type": "object"
+        },
+        "trades": {
+            "type": "object"
+        },
+        "heatmapData": {
+            "type": "object"
+        },
+        "status": {
+            "type": "string",
+            "default": "completed",
+            "enum": [
+                "pending",
+                "running",
+                "completed",
+                "failed"
+            ]
+        },
+        "error": {
+            "type": "string"
+        },
+        "createdAt": {
+            "type": "date",
+            "defaultFn": "now"
+        }
+    },
+    "validations": [],
+    "relations": {
+        "strategy": {
+            "type": "belongsTo",
+            "model": "TdStrategy",
+            "foreignKey": "strategyId"
+        },
+        "user": {
+            "type": "belongsTo",
+            "model": "user",
+            "foreignKey": "userId"
+        }
+    },
+    "acls": [
+        {
+            "accessType": "*",
+            "principalType": "ROLE",
+            "principalId": "$authenticated",
+            "permission": "ALLOW"
+        },
+        {
+            "accessType": "EXECUTE",
+            "principalType": "ROLE",
+            "principalId": "$unauthenticated",
+            "permission": "DENY"
+        }
+    ],
+    "methods": {}
+}

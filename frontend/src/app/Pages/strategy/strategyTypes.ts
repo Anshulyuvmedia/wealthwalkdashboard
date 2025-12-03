@@ -173,3 +173,21 @@ export interface TdStrategy {
     exitConditions?: ExitConditionsData | null;
     riskManagement?: RiskManagementData;
 }
+
+export interface BacktestResult {
+    trades: Trade[];
+    equityCurve: { date: string; equity: number }[];
+    heatmapData?: any[];
+    totalTrades: number;
+    winRate: number;
+    totalPL: number;
+    maxDrawdown: number;
+    sharpeRatio: number;
+    cagr: number;
+    strategyName?: string;
+    startDate?: string;
+    endDate?: string;
+}
+
+// strategyTypes.ts — add this
+export type PeriodValue = "1m" | "3m" | "6m" | "1y" | "2y" | "all" | "custom";

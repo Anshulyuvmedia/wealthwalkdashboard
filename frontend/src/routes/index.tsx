@@ -17,7 +17,7 @@ import EditSignal from "@/app/Pages/signals/[id]";
 import Strategy from "@/app/Pages/strategy/strategypage";
 import AddStrategy from "@/app/Pages/strategy/addStrategy";
 import EditStrategy from "@/app/Pages/strategy/EditStrategy";
-import BackTesting from "@/app/Pages/strategy/backTesting";
+import BackTesting from "@/app/Pages/strategy/backtest/[id]";
 
 const authProtectedRoutes = [
   { path: "/", component: <Dashboard /> },

@@ -150,5 +150,17 @@
     "StrategyExecution": {
     "dataSource": "mongoDB",
     "public": true
+  },
+    "backtest": {
+    "dataSource": "mongoDB",
+    "public": true
+  },
+    "Screener": {
+    "dataSource": "mongoDB",
+    "public": true
+  },
+    "Stocks": {
+    "dataSource": "mongoDB",
+    "public": true
   }
 }

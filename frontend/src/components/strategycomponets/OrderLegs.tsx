@@ -80,12 +80,14 @@ interface OrderLegsProps {
     selectedTemplate: string;
     onLegsChange: (data: OrderLegsData) => void;
     initialData?: OrderLegsData;
+    isEditMode?: boolean;
 }
 
 const OrderLegs: React.FC<OrderLegsProps> = ({
     selectedTemplate,
     onLegsChange,
     initialData,
+    isEditMode = false,
 }) => {
     const [legs, setLegs] = useState<OrderLeg[]>([]);
     const [moveSLToCost, setMoveSLToCost] = useState(false);
@@ -106,6 +108,32 @@ const OrderLegs: React.FC<OrderLegsProps> = ({
     const [tempTslMode, setTempTslMode] = useState("TSL %");
     const [tempTslSelection, setTempTslSelection] = useState("");
     const [tempTslTrailBy, setTempTslTrailBy] = useState("");
+
+    /* ------------------- notify parent ------------------- */
+    const data = useMemo(
+        () => ({
+            advanceFeatures: {
+                moveSLToCost,
+                exitAllOnSLTgt,
+                prePunchSL,
+                premiumDifference: { enabled: premiumDifference },
+                waitAndTrade: { enabled: waitAndTrade },
+                reEntryExecute: { enabled: reEntryExecute },
+                trailSL: { enabled: trailSL },
+            },
+            legs: legs.map((l) => ({ ...l })),
+        }),
+        [
+            moveSLToCost,
+            exitAllOnSLTgt,
+            prePunchSL,
+            premiumDifference,
+            waitAndTrade,
+            reEntryExecute,
+            trailSL,
+            legs,
+        ]
+    );
 
     const createDefaultLeg = (): OrderLeg => ({
         id: uuidv4(),
@@ -134,35 +162,57 @@ const OrderLegs: React.FC<OrderLegsProps> = ({
         tslTrailBy: "",
     });
 
-    /* ------------------- template / initial data ------------------- */
+    const hasInitialized = React.useRef(false);
+
     useEffect(() => {
-        if (initialData) {
-            const cloned = initialData.legs.map((l) => ({ ...l, id: uuidv4() }));
-            setLegs(cloned);
-            const af = initialData.advanceFeatures;
-            setMoveSLToCost(af.moveSLToCost);
-            setExitAllOnSLTgt(af.exitAllOnSLTgt);
-            setPrePunchSL(af.prePunchSL);
-            setPremiumDifference(af.premiumDifference.enabled);
-            setWaitAndTrade(af.waitAndTrade.enabled);
-            setReEntryExecute(af.reEntryExecute.enabled);
-            setTrailSL(af.trailSL.enabled);
+        if (isEditMode) {
+            // Edit mode: only load initialData once
+            if (initialData && !hasInitialized.current) {
+                setLegs(initialData.legs.map(l => ({ ...l, id: uuidv4() })));
+                const af = initialData.advanceFeatures;
+                setMoveSLToCost(af.moveSLToCost);
+                setExitAllOnSLTgt(af.exitAllOnSLTgt);
+                setPrePunchSL(af.prePunchSL);
+                setPremiumDifference(af.premiumDifference.enabled);
+                setWaitAndTrade(af.waitAndTrade.enabled);
+                setReEntryExecute(af.reEntryExecute.enabled);
+                setTrailSL(af.trailSL.enabled);
+                hasInitialized.current = true;
+            }
             return;
         }
 
-        if (selectedTemplate) {
-            const tmpl = getTemplateLegs(selectedTemplate);
-            setLegs(tmpl.length > 0 ? tmpl.map((l) => ({ ...l, id: uuidv4() })) : [createDefaultLeg()]);
-            // reset toggles
-            setMoveSLToCost(false);
-            setExitAllOnSLTgt(false);
-            setPrePunchSL(false);
-            setPremiumDifference(false);
-            setWaitAndTrade(false);
-            setReEntryExecute(false);
-            setTrailSL(false);
+        // Create mode: ALWAYS follow selectedTemplate
+        console.log('selectedTemplate', selectedTemplate);
+        applyTemplate(selectedTemplate || "");
+        if (!hasInitialized.current) hasInitialized.current = true;
+    }, [initialData, isEditMode, selectedTemplate]);
+
+    // 3. Notify parent on changes (but not on initial load)
+    useEffect(() => {
+        if (!hasInitialized.current) return;
+        onLegsChange(data);
+    }, [data, onLegsChange]);
+
+    const applyTemplate = (template: string) => {
+        if (!template) {
+            setLegs([createDefaultLeg()]);
+        } else {
+            const tmpl = getTemplateLegs(template);
+            setLegs(tmpl.length > 0
+                ? tmpl.map(l => ({ ...l, id: uuidv4() }))
+                : [createDefaultLeg()]
+            );
         }
-    }, [initialData, selectedTemplate]);
+        // Reset all advance features
+        setMoveSLToCost(false);
+        setExitAllOnSLTgt(false);
+        setPrePunchSL(false);
+        setPremiumDifference(false);
+        setWaitAndTrade(false);
+        setReEntryExecute(false);
+        setTrailSL(false);
+    };
 
     /* ------------------- leg CRUD ------------------- */
     const handleAddLeg = () => setLegs((p) => [...p, createDefaultLeg()]);
@@ -180,35 +230,13 @@ const OrderLegs: React.FC<OrderLegsProps> = ({
         setLegs((p) => p.map((l) => (l.id === id ? { ...l, ...updates } : l)));
     };
 
-    /* ------------------- notify parent ------------------- */
-    const data = useMemo(
-        () => ({
-            advanceFeatures: {
-                moveSLToCost,
-                exitAllOnSLTgt,
-                prePunchSL,
-                premiumDifference: { enabled: premiumDifference },
-                waitAndTrade: { enabled: waitAndTrade },
-                reEntryExecute: { enabled: reEntryExecute },
-                trailSL: { enabled: trailSL },
-            },
-            legs: legs.map((l) => ({ ...l })),
-        }),
-        [
-            moveSLToCost,
-            exitAllOnSLTgt,
-            prePunchSL,
-            premiumDifference,
-            waitAndTrade,
-            reEntryExecute,
-            trailSL,
-            legs,
-        ]
-    );
 
+
+    // Notify parent immediately on every change
     useEffect(() => {
-        const t = setTimeout(() => onLegsChange(data), 5000);
-        return () => clearTimeout(t);
+        if (hasInitialized.current) {
+            onLegsChange(data);
+        }
     }, [data, onLegsChange]);
 
     /* ------------------- dialogs (edit first leg only) ------------------- */
