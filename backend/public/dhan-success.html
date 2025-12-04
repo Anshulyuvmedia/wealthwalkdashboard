@@ -1,0 +1,73 @@
+<!-- public/dhan-success.html -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dhan Connected</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            background: #000;
+            color: #FFF;
+            font-family: system-ui;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin: 12px 0;
+        }
+
+        p {
+            font-size: 16px;
+            color: #AAA;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="icon">Success</div>
+    <h1>Connected to Dhan!</h1>
+    <p>Your portfolio is updating...</p>
+    <p style="color:#00D09C;margin-top:30px;">Closing automatically...</p>
+
+    <script>
+        // MAXIMUM COMPATIBILITY POSTMESSAGE
+        function send(msg) {
+            const data = JSON.stringify(msg);
+            try {
+                if (window.ReactNativeWebView?.postMessage) {
+                    window.ReactNativeWebView.postMessage(data);
+                }
+                // Critical fallback for Android
+                if (window.postMessage) window.postMessage(data, '*');
+                if (window.parent?.postMessage) window.parent.postMessage(data, '*');
+            } catch (e) { console.log(e); }
+        }
+
+        // Send success immediately and repeatedly
+        send({ type: 'DHAN_OAUTH_SUCCESS' });
+        setTimeout(() => send({ type: 'DHAN_OAUTH_SUCCESS' }), 500);
+        setTimeout(() => send({ type: 'DHAN_OAUTH_SUCCESS' }), 1000);
+
+        // Close WebView
+        setTimeout(() => {
+            send({ type: 'DHAN_CLOSE_WEBVIEW' });
+        }, 1500);
+    </script>
+</body>
+
+</html>

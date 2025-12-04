@@ -10,7 +10,7 @@ require('dotenv').config();
 
 const app = (module.exports = loopback());
 app.enable('trust proxy');
-
+app.use(loopback.static(path.join(__dirname, '../public')));
 // Configure CORS
 app.use(require('cors')({
   origin: '*',

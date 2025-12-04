@@ -162,5 +162,9 @@
     "Stocks": {
     "dataSource": "mongoDB",
     "public": true
+  },
+    "BrokerConnection": {
+    "dataSource": "mongoDB",
+    "public": true
   }
 }
