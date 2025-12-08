@@ -257,3 +257,33 @@ app.start = function () {
 if (require.main === module) {
   // app.start() is called after initializeRoles
 }
+
+// After app.start()
+const server = require('http').createServer(app);
+const io = require('socket.io')(server);
+
+app.io = io;
+
+io.on('connection', (socket) => {
+  const token = socket.handshake.query.token;
+  if (!token) return socket.disconnect();
+
+  // Verify token and extract userId (reuse your JWT logic)
+  try {
+    const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET || 'your-secret');
+    const userId = decoded.userId;
+    socket.join(`user_${userId}`);
+    console.log(`Socket connected: user_${userId}`);
+
+    socket.on('disconnect', () => {
+      console.log(`Socket disconnected: user_${userId}`);
+    });
+  } catch (e) {
+    socket.disconnect();
+  }
+});
+
+// Replace app.start() with:
+server.listen(process.env.PORT || 3000, () => {
+  console.log('Server + Socket.IO running on port', process.env.PORT || 3000);
+});

@@ -103,7 +103,7 @@ module.exports = function (ForexRate) {
             }
 
             if (failedSymbols.length > 0) {
-                console.warn('Using fallback data for failed forex symbols:', failedSymbols);
+                // console.warn('Using fallback data for failed forex symbols:', failedSymbols);
                 const fallbackResults = [
                     { assetType: 'forex', currencyPair: 'EUR/USD', rate: 1.1034, changePercent: 0.5, timestamp: new Date(), isDelayed: true },
                     { assetType: 'forex', currencyPair: 'GBP/USD', rate: 1.3125, changePercent: -0.2, timestamp: new Date(), isDelayed: true }
@@ -135,7 +135,7 @@ module.exports = function (ForexRate) {
                 ).catch(err => console.error(`Error saving fallback forex ${result.currencyPair}:`, err.message));
                 forexResults.push(result);
             }
-            console.log('Using fallback forex data:', fallbackResults);
+            // console.log('Using fallback forex data:', fallbackResults);
             return fallbackResults;
         }
     }
@@ -153,14 +153,14 @@ module.exports = function (ForexRate) {
             // Process each symbol in the response object
             for (const [symbol, quote] of Object.entries(quotes)) {
                 if (quote.status === 'error') {
-                    console.warn(`Error for symbol ${symbol}: ${quote.message}`);
+                    // console.warn(`Error for symbol ${symbol}: ${quote.message}`);
                     failedSymbols.push(symbol);
                     continue;
                 }
 
                 // Skip if no close price or invalid data
                 if (!quote.close) {
-                    console.warn(`No valid data for symbol ${symbol}`);
+                    // console.warn(`No valid data for symbol ${symbol}`);
                     failedSymbols.push(symbol);
                     continue;
                 }
@@ -194,7 +194,7 @@ module.exports = function (ForexRate) {
 
             // Use fallback only for failed symbols
             if (failedSymbols.length > 0) {
-                console.warn('Using fallback data for failed symbols:', failedSymbols);
+                // console.warn('Using fallback data for failed symbols:', failedSymbols);
                 const fallbackMap = {
                     'XAU/USD': { rate: 1800.50, changePercent: 1.2 },
                     'WTI/USD': { rate: 75.25, changePercent: -0.8 }
@@ -222,7 +222,7 @@ module.exports = function (ForexRate) {
             }
 
             if (commodityResults.length === 0) {
-                console.warn('No valid commodity data; using full fallback');
+                // console.warn('No valid commodity data; using full fallback');
                 const fullFallback = [
                     { assetType: 'commodity', currencyPair: 'XAU/USD', rate: 1800.50, changePercent: 1.2, timestamp: new Date(), isDelayed: true },
                     { assetType: 'commodity', currencyPair: 'WTI/USD', rate: 75.25, changePercent: -0.8, timestamp: new Date(), isDelayed: true }
@@ -235,7 +235,7 @@ module.exports = function (ForexRate) {
                     ).catch(err => console.error(`Error saving full fallback ${result.currencyPair}:`, err.message));
                     commodityResults.push(result);
                 }
-                console.log('Using full fallback commodity data:', fullFallback);
+                // console.log('Using full fallback commodity data:', fullFallback);
                 return fullFallback;
             }
 
@@ -336,7 +336,7 @@ module.exports = function (ForexRate) {
             if (allResults.length === 0) {
                 console.warn('No valid data fetched, returning empty array with warning');
             }
-            console.log('Fetched and saved all Delta India + Twelve Data:', allResults.length);
+            // console.log('Fetched and saved all Delta India + Twelve Data:', allResults.length);
             return allResults;
         } catch (error) {
             console.error('Error fetching data:', error.message, error.response?.data);
