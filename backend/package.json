@@ -7,7 +7,9 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "start": "node .",
+    "start": "node -r dotenv/config server/server.js",
+    "dev": "nodemon -r dotenv/config server/server.js",
+    "debug": "nodemon --inspect -r dotenv/config server/server.js",
     "posttest": "npm run lint"
   },
   "dependencies": {

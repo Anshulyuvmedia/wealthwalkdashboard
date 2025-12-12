@@ -24,5 +24,5 @@ assignAdminRole();
 
 async function checkRole() {
     const roleMapping = await RoleMapping.findOne({ where: { principalId: '689040a51880133c0cb00885', principalType: 'USER' } });
-    console.log('RoleMapping:', roleMapping);
+    // console.log('RoleMapping:', roleMapping);
 }

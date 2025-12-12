@@ -1,4 +1,6 @@
 'use strict';
+require('dotenv').config();
+// console.log('DHAN_ENV =', process.env.DHAN_ENV || 'NOT SET!!!');
 
 const loopback = require('loopback');
 const boot = require('loopback-boot');
@@ -6,7 +8,6 @@ const morgan = require('morgan');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
-require('dotenv').config();
 
 const app = (module.exports = loopback());
 app.enable('trust proxy');

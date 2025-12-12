@@ -1,13 +1,22 @@
 // common/models/broker-connection.js
 const axios = require("axios");
 const cache = require("../util/cache");
-module.exports = function (BrokerConnection) {
+module.exports = async function (BrokerConnection) {
+    // Wait until the model is fully mounted to the LoopBack app
+    const app = await new Promise(resolve => {
+        if (BrokerConnection.app) {
+            resolve(BrokerConnection.app);
+        } else {
+            BrokerConnection.once("attached", () => resolve(BrokerConnection.app));
+        }
+    });
     console.log("Dhan Integration – 100% Working + Funds (Dec 2025)");
 
     const getDhanRecord = async (userId) => {
         const record = await BrokerConnection.findOne({
             where: { userId, broker: "dhan" },
         });
+        console.log('record', record);
         if (!record) throw new Error("Dhan credentials not saved");
         return record;
     };
@@ -61,6 +70,7 @@ module.exports = function (BrokerConnection) {
         );
 
         const consentAppId = res.data.consentAppId;
+        console.log('consentAppId', consentAppId);
         if (!consentAppId) throw new Error("Failed to generate consent");
 
         const pending = { ...(BrokerConnection.app.get("dhanPendingConsents") || {}) };
@@ -68,16 +78,17 @@ module.exports = function (BrokerConnection) {
         BrokerConnection.app.set("dhanPendingConsents", pending);
 
         // Correct cleanup using same `pending` reference
-        setTimeout(() => {
-            const current = BrokerConnection.app.get("dhanPendingConsents") || {};
-            if (current[consentAppId]) {
-                delete current[consentAppId];
-                BrokerConnection.app.set("dhanPendingConsents", current);
-            }
-        }, 10 * 60 * 1000);
+        // setTimeout(() => {
+        //     const current = BrokerConnection.app.get("dhanPendingConsents") || {};
+        //     if (current[consentAppId]) {
+        //         delete current[consentAppId];
+        //         BrokerConnection.app.set("dhanPendingConsents", current);
+        //     }
+        // }, 10 * 60 * 1000);
 
         const callbackUrl = "https://johnson-prevertebral-irradiatingly.ngrok-free.dev/api/BrokerConnections/callback";
         const loginUrl = `https://auth.dhan.co/login/consentApp-login?consentAppId=${consentAppId}&redirect_url=${encodeURIComponent(callbackUrl)}`;
+        console.log('Final loginUrl:', loginUrl);
 
         return { loginUrl };
     };
@@ -88,27 +99,33 @@ module.exports = function (BrokerConnection) {
         http: { path: "/start-login", verb: "get" },
     });
 
-    // ──────────────────────────────────────
-    // 3. Handle Callback – FIXED (Critical)
-    // ──────────────────────────────────────
-    BrokerConnection.handleCallback = async function (tokenId, ctx) {
+    // 3. Handle Callback – FIXED (Broker token ≠ App token)
+    BrokerConnection.callback = async function (tokenId, ctx) {
+
+        console.log("Callback URL hit:", ctx.req.originalUrl);
+        console.log("Full Query Params:", ctx.req.query);
+        console.log("tokenId received:", tokenId);
+
         if (!tokenId) {
             ctx.res.status(400).send('Missing tokenId');
             return;
         }
 
         const pending = BrokerConnection.app.get("dhanPendingConsents") || {};
+        console.log("PENDING SESSIONS:", Object.keys(pending));
+
         let foundSession = null;
         let foundConsentAppId = null;
 
-        // Search by value.userId + time, but now correctly match token flow
         for (const [consentAppId, session] of Object.entries(pending)) {
             if (session && Date.now() - session.createdAt < 10 * 60 * 1000) {
                 foundConsentAppId = consentAppId;
                 foundSession = session;
-                break; // first valid one
+                break;
             }
         }
+
+        console.log("FOUND SESSION:", foundSession);
 
         if (!foundSession) {
             ctx.res.set('Content-Type', 'text/html');
@@ -131,42 +148,79 @@ module.exports = function (BrokerConnection) {
                 }
             );
 
+            console.log("Dhan response:", tokenRes.data);
+
             const accessToken = tokenRes.data?.accessToken;
             if (!accessToken) throw new Error("No access token in response");
 
+            // SAVE REAL DHAN TOKEN (BROKER TOKEN)
             await record.updateAttribute("accessToken", accessToken);
 
-            // Clean up properly
+            // Remove session
             delete pending[foundConsentAppId];
             BrokerConnection.app.set("dhanPendingConsents", pending);
 
+            // CREATE SEPARATE APP TOKEN (LOOPBACK TOKEN)
+            const AccessToken = BrokerConnection.app.models.AccessToken;
+            const lbToken = await AccessToken.create({
+                userId,
+                ttl: 60 * 60 * 24 * 30  // 30 days
+            });
+
+            // SEND BOTH TOKENS BACK TO REACT NATIVE WEBVIEW
             ctx.res.set('Content-Type', 'text/html');
             ctx.res.send(`
-            <h1 style="color:green; text-align:center; margin-top:100px;">
-                Dhan Connected Successfully!
-            </h1>
-            <p style="text-align:center;">You can now close this window.</p>
-            <script>setTimeout(() => window.close(), 3000);</script>
+            <!DOCTYPE html>
+            <html>
+                <body>
+                    <script>
+                    setTimeout(() => {
+                        window.ReactNativeWebView.postMessage(JSON.stringify({
+                            type: "DHAN_OAUTH_SUCCESS",
+                            brokerToken: "${accessToken}",    // REAL DHAN TOKEN
+                            appToken: "${lbToken.id}"         // YOUR APP TOKEN
+                        }));
+                    }, 300);
+
+                    setTimeout(() => window.close(), 1200);
+                    </script>
+
+                    <h2 style="color:green; text-align:center; margin-top:100px; font-family:sans-serif">
+                        Dhan Connected Successfully!
+                    </h2>
+                    <p style="text-align:center">You can close this window.</p>
+                </body>
+            </html>
         `);
+
+            return;
+
         } catch (err) {
-            console.error("Dhan callback error:", err.response?.data || err.message);
+            console.log("Consume ERROR FULL:", {
+                status: err?.response?.status,
+                headers: err?.response?.headers,
+                data: err?.response?.data,
+                axiosMessage: err.message
+            });
+
             ctx.res.set('Content-Type', 'text/html');
             ctx.res.send(`
             <h1 style="color:red">Connection Failed</h1>
-            <pre>${err.message}</pre>
-            <p>Please try again.</p>
+            <pre>${JSON.stringify(err?.response?.data || err.message, null, 2)}</pre>
         `);
         }
     };
 
-    BrokerConnection.remoteMethod("handleCallback", {
+
+    BrokerConnection.remoteMethod("callback", {
         accepts: [
             { arg: "tokenId", type: "string", source: "query", required: true },
             { arg: "ctx", type: "object", http: { source: "context" } }
         ],
-        returns: { arg: "body", type: "string", root: true },
         http: { path: "/callback", verb: "get" },
     });
+
+
 
     // Profile
     BrokerConnection.getProfile = async function (req) {
