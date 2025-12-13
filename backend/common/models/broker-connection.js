@@ -16,7 +16,7 @@ module.exports = async function (BrokerConnection) {
         const record = await BrokerConnection.findOne({
             where: { userId, broker: "dhan" },
         });
-        console.log('record', record);
+        // console.log('record', record);
         if (!record) throw new Error("Dhan credentials not saved");
         return record;
     };
