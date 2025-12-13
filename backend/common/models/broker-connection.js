@@ -1,6 +1,8 @@
 // common/models/broker-connection.js
 const axios = require("axios");
 const cache = require("../util/cache");
+const { getDhanConfig } = require('../util/dhanConfig');
+
 module.exports = async function (BrokerConnection) {
     // Wait until the model is fully mounted to the LoopBack app
     const app = await new Promise(resolve => {
@@ -1144,5 +1146,66 @@ module.exports = async function (BrokerConnection) {
         returns: { type: "array", root: true },
         http: { path: "/order-history-by-security", verb: "get" },
         description: "Fetch executed trade history for a specific securityId (FY range)"
+    });
+
+
+
+
+    BrokerConnection.getTodayOrders = async function (req) {
+        const userId = req.accessToken.userId;
+        const record = await getDhanRecord(userId);
+        const dhan = getDhanConfig();
+        
+        const accessToken = dhan.isSandbox ? dhan.accessToken : record.accessToken;
+        
+        // console.log('dhan record.accessToken', record.accessToken);
+        try {
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            const ordersRes = await axios.get(`${dhan.baseUrl}/v2/orders`, {
+                headers: { "access-token": accessToken, "Accept": "application/json" },
+                timeout: 15000
+            });
+
+            const orders = ordersRes.data || [];
+            // console.log('Todays orders', orders);
+            return {
+                orders: orders.map(order => ({
+                    orderId: order.orderId,
+                    tradingSymbol: order.tradingSymbol,
+                    exchangeSegment: order.exchangeSegment,
+                    productType: order.productType,
+                    transactionType: order.transactionType,
+                    orderType: order.orderType,
+                    quantity: order.quantity,
+                    remainingQuantity: order.remainingQuantity,
+                    tradedQuantity: order.tradedQuantity || 0,
+                    price: order.price,
+                    triggerPrice: order.triggerPrice || 0,
+                    averagePrice: order.averagePrice || 0,
+                    averageTradedPrice: order.averageTradedPrice || 0,
+                    orderStatus: order.orderStatus,
+                    orderValidity: order.validity,
+                    orderSecurityId: order.securityId,
+                    orderDateTime: order.orderDateTime || order.exchangeTime,
+                })),
+                date: todayStr,
+                count: orders.length
+            };
+        } catch (err) {
+            console.error("Get today orders error:", err.message || err);
+            return {
+                orders: [],
+                date: new Date().toISOString().split('T')[0],
+                count: 0,
+                error: err.response?.data?.errorMessage || err.message || "Failed to fetch orders"
+            };
+        }
+    };
+
+    BrokerConnection.remoteMethod("getTodayOrders", {
+        accepts: [{ arg: "req", type: "object", http: { source: "req" } }],
+        returns: { root: true },
+        http: { path: "/todayOrders", verb: "get" }
     });
 };
