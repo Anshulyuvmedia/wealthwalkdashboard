@@ -1148,16 +1148,13 @@ module.exports = async function (BrokerConnection) {
         description: "Fetch executed trade history for a specific securityId (FY range)"
     });
 
-
-
-
     BrokerConnection.getTodayOrders = async function (req) {
         const userId = req.accessToken.userId;
         const record = await getDhanRecord(userId);
         const dhan = getDhanConfig();
-        
+
         const accessToken = dhan.isSandbox ? dhan.accessToken : record.accessToken;
-        
+
         // console.log('dhan record.accessToken', record.accessToken);
         try {
             const todayStr = new Date().toISOString().split('T')[0];
@@ -1207,5 +1204,119 @@ module.exports = async function (BrokerConnection) {
         accepts: [{ arg: "req", type: "object", http: { source: "req" } }],
         returns: { root: true },
         http: { path: "/todayOrders", verb: "get" }
+    });
+
+    BrokerConnection.modifyPendingOrder = async function (data, req) {
+        const userId = req.accessToken.userId;
+        const { orderId, price, quantity, triggerPrice, legName } = data;
+
+        if (!orderId) {
+            return { success: false, message: "orderId is required" };
+        }
+
+        const dhan = getDhanConfig();
+        const record = dhan.isSandbox ? null : await getDhanRecord(userId);
+
+        // 🔁 Correct token & clientId source
+        const accessToken = dhan.isSandbox
+            ? dhan.accessToken
+            : record.accessToken;
+
+        const dhanClientId = dhan.isSandbox
+            ? dhan.clientId
+            : record.clientId;
+
+        try {
+            // 1️⃣ Fetch existing order
+            const orderRes = await axios.get(
+                `${dhan.baseUrl}/v2/orders/${orderId}`,
+                {
+                    headers: { "access-token": accessToken },
+                    timeout: 15000
+                }
+            );
+
+            const currentOrder = Array.isArray(orderRes.data)
+                ? orderRes.data[0]
+                : orderRes.data;
+
+            // ❌ Only pending orders allowed
+            if (currentOrder.orderStatus !== "PENDING") {
+                return {
+                    success: false,
+                    message: `Order cannot be modified. Status: ${currentOrder.orderStatus}`
+                };
+            }
+
+            // 2️⃣ FULL payload (Dhan mandatory)
+            const body = {
+                dhanClientId,                         // ✅ sandbox OR production
+                orderId: currentOrder.orderId,        // ✅ mandatory
+                orderType: currentOrder.orderType,    // ✅ mandatory
+                validity: currentOrder.validity,      // ✅ mandatory
+                quantity: Number(quantity || currentOrder.quantity),
+            };
+
+            // LIMIT → price required
+            if (currentOrder.orderType === "LIMIT") {
+                body.price = Number(price || currentOrder.price);
+            }
+
+            // SL / SL-M → triggerPrice required
+            if (currentOrder.triggerPrice > 0) {
+                body.triggerPrice = Number(
+                    triggerPrice || currentOrder.triggerPrice
+                );
+            }
+
+            // Optional
+            if (legName && legName !== "NA") {
+                body.legName = legName;
+            }
+
+            console.log("Final modify body:", body);
+
+            // 3️⃣ Modify order
+            const modifyRes = await axios.put(
+                `${dhan.baseUrl}/v2/orders/${orderId}`,
+                body,
+                {
+                    headers: {
+                        "access-token": accessToken,
+                        "Accept": "application/json",
+                        "Content-Type": "application/json"
+                    },
+                    timeout: 15000
+                }
+            );
+            console.log('modifyRes:', modifyRes.data);
+            return {
+                success: true,
+                data: modifyRes.data
+            };
+
+        } catch (err) {
+            console.error(
+                "Modify order error:",
+                err.response?.data || err.message
+            );
+
+            return {
+                success: false,
+                message:
+                    err.response?.data?.errorMessage ||
+                    err.message ||
+                    "Failed to modify order"
+            };
+        }
+    };
+
+    BrokerConnection.remoteMethod("modifyPendingOrder", {
+        accepts: [
+            { arg: "data", type: "object", http: { source: "body" }, required: true }, // ← This gets the JSON payload
+            { arg: "req", type: "object", http: { source: "req" } } // ← Optional: still get full req for accessToken
+        ],
+        returns: { root: true },
+        http: { path: "/modifypendingorder", verb: "put" },
     });
 };
