@@ -166,5 +166,9 @@
     "BrokerConnection": {
     "dataSource": "mongoDB",
     "public": true
+  },
+  "DhanInstrument": {
+    "dataSource": "mongoDB",
+    "public": true
   }
 }

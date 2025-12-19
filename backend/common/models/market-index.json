@@ -1,25 +1,19 @@
 {
     "name": "MarketIndex",
     "base": "PersistedModel",
+    "plural": "marketindices",
     "properties": {
         "name": {
             "type": "string",
             "required": true,
-            "id": true
+            "id": true,
+            "index": true
         },
-        "data": {
+        "symbols": {
             "type": [
-                "object"
+                "string"
             ],
             "required": true
-        },
-        "change": {
-            "type": "string",
-            "required": true
         }
-    },
-    "validations": [],
-    "relations": {},
-    "acls": [],
-    "methods": {}
+    }
 }

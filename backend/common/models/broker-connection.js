@@ -72,7 +72,7 @@ module.exports = async function (BrokerConnection) {
         );
 
         const consentAppId = res.data.consentAppId;
-        console.log('consentAppId', consentAppId);
+        // console.log('consentAppId', consentAppId);
         if (!consentAppId) throw new Error("Failed to generate consent");
 
         const pending = { ...(BrokerConnection.app.get("dhanPendingConsents") || {}) };
@@ -90,7 +90,7 @@ module.exports = async function (BrokerConnection) {
 
         const callbackUrl = "https://johnson-prevertebral-irradiatingly.ngrok-free.dev/api/BrokerConnections/callback";
         const loginUrl = `https://auth.dhan.co/login/consentApp-login?consentAppId=${consentAppId}&redirect_url=${encodeURIComponent(callbackUrl)}`;
-        console.log('Final loginUrl:', loginUrl);
+        // console.log('Final loginUrl:', loginUrl);
 
         return { loginUrl };
     };
@@ -222,8 +222,47 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/callback", verb: "get" },
     });
 
+    // ──────────────────────────────────────
+    // DISCONNECT BROKER (Clear credentials & tokens)
+    // ──────────────────────────────────────
+    BrokerConnection.disconnect = async function (req) {
+        const userId = req.accessToken.userId;
+        if (!userId) throw new Error('Unauthorized');
 
+        try {
+            // Find and clear the user's Dhan record
+            const updated = await BrokerConnection.updateAll(
+                { userId, broker: "dhan" },
+                {
+                    clientId: null,
+                    apiKey: null,
+                    apiSecret: null,
+                    accessToken: null,     // Dhan OAuth token
+                    linkedAt: null,
+                    // Keep userId and broker field so record isn't fully deleted (optional)
+                }
+            );
 
+            if (updated.count === 0) {
+                // No record found — maybe already disconnected
+                return { success: true, message: 'No active Dhan connection found' };
+            }
+
+            console.log(`Dhan disconnected for user ${userId}`);
+
+            return { success: true, message: 'Dhan account disconnected successfully' };
+        } catch (err) {
+            console.error('Disconnect error:', err);
+            throw new Error('Failed to disconnect Dhan account');
+        }
+    };
+
+    BrokerConnection.remoteMethod('disconnect', {
+        accepts: [{ arg: 'req', type: 'object', http: { source: 'req' } }],
+        returns: { root: true, type: 'object' },
+        http: { path: '/disconnect', verb: 'post' },
+        description: 'Disconnect and clear saved Dhan credentials and access token'
+    });
     // Profile
     BrokerConnection.getProfile = async function (req) {
         const record = await getDhanRecord(req.accessToken.userId);
@@ -236,7 +275,7 @@ module.exports = async function (BrokerConnection) {
             },
             timeout: 10000
         });
-
+        console.log('profile', res.data);
         return res.data;
     };
 
@@ -615,7 +654,7 @@ module.exports = async function (BrokerConnection) {
             const holdings = holdingsRes.data || [];
             const positions = positionsRes.data || [];
             const funds = fundsRes.data;
-            console.log('holdings', holdings, 'positions', positions, 'funds', funds);
+            // console.log('holdings', holdings, 'positions', positions, 'funds', funds);
 
             let totalInvestment = 0;
             let currentValue = 0;
@@ -789,7 +828,7 @@ module.exports = async function (BrokerConnection) {
                     order.price > 0
                 )
                 .map(order => ({
-                    date: new Date(order.orderDateTime).toLocaleDateString('en-IN', {
+                    date: new Date(order.updateTime).toLocaleDateString('en-IN', {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric'
@@ -1155,7 +1194,7 @@ module.exports = async function (BrokerConnection) {
 
         const accessToken = dhan.isSandbox ? dhan.accessToken : record.accessToken;
 
-        // console.log('dhan record.accessToken', record.accessToken);
+        console.log('dhan record.accessToken', record.accessToken);
         try {
             const todayStr = new Date().toISOString().split('T')[0];
 
@@ -1165,26 +1204,38 @@ module.exports = async function (BrokerConnection) {
             });
 
             const orders = ordersRes.data || [];
-            // console.log('Todays orders', orders);
+            console.log('Todays orders', orders);
             return {
                 orders: orders.map(order => ({
+                    dhanClientId: order.dhanClientId,
                     orderId: order.orderId,
-                    tradingSymbol: order.tradingSymbol,
+                    exchangeOrderId: order.exchangeOrderId,
+                    correlationId: order.correlationId,
+                    orderStatus: order.orderStatus,
+                    transactionType: order.transactionType,
                     exchangeSegment: order.exchangeSegment,
                     productType: order.productType,
-                    transactionType: order.transactionType,
                     orderType: order.orderType,
+                    orderValidity: order.validity,
+                    tradingSymbol: order.tradingSymbol,
+                    orderSecurityId: order.securityId,
                     quantity: order.quantity,
-                    remainingQuantity: order.remainingQuantity,
-                    tradedQuantity: order.tradedQuantity || 0,
+                    disclosedQuantity: order.disclosedQuantity || 0,
                     price: order.price,
                     triggerPrice: order.triggerPrice || 0,
-                    averagePrice: order.averagePrice || 0,
+                    afterMarketOrder: order.afterMarketOrder,
+                    boProfitValue: order.boProfitValue,
+                    boStopLossValue: order.boStopLossValue,
+                    legName: order.legName,
+                    orderCreateTime: order.createTime,
+                    orderUpdateTime: order.updateTime,
+                    exchangeTime: order.exchangeTime,
+                    omsErrorCode: order.omsErrorCode,
+                    omsErrorDescription: order.omsErrorDescription,
+                    algoId: order.algoId,
+                    remainingQuantity: order.remainingQuantity,
                     averageTradedPrice: order.averageTradedPrice || 0,
-                    orderStatus: order.orderStatus,
-                    orderValidity: order.validity,
-                    orderSecurityId: order.securityId,
-                    orderDateTime: order.orderDateTime || order.exchangeTime,
+                    filledQty: order.filledQty || 0,
                 })),
                 date: todayStr,
                 count: orders.length
@@ -1208,26 +1259,27 @@ module.exports = async function (BrokerConnection) {
 
     BrokerConnection.modifyPendingOrder = async function (data, req) {
         const userId = req.accessToken.userId;
-        const { orderId, price, quantity, triggerPrice, legName } = data;
+        const { orderId, orderType, validity, price, quantity, triggerPrice, legName } = data;
 
         if (!orderId) {
-            return { success: false, message: "orderId is required" };
+            return {
+                success: false,
+                error: {
+                    code: "VALIDATION_ERROR",
+                    message: "orderId is required",
+                    recoverable: false
+                }
+            };
         }
 
         const dhan = getDhanConfig();
         const record = dhan.isSandbox ? null : await getDhanRecord(userId);
 
-        // 🔁 Correct token & clientId source
-        const accessToken = dhan.isSandbox
-            ? dhan.accessToken
-            : record.accessToken;
-
-        const dhanClientId = dhan.isSandbox
-            ? dhan.clientId
-            : record.clientId;
+        const accessToken = dhan.isSandbox ? dhan.accessToken : record.accessToken;
+        const dhanClientId = dhan.isSandbox ? dhan.clientId : record.clientId;
 
         try {
-            // 1️⃣ Fetch existing order
+            // 1. Fetch current order details
             const orderRes = await axios.get(
                 `${dhan.baseUrl}/v2/orders/${orderId}`,
                 {
@@ -1236,47 +1288,77 @@ module.exports = async function (BrokerConnection) {
                 }
             );
 
-            const currentOrder = Array.isArray(orderRes.data)
-                ? orderRes.data[0]
-                : orderRes.data;
+            const currentOrder = orderRes.data; // v2 returns object directly
 
-            // ❌ Only pending orders allowed
-            if (currentOrder.orderStatus !== "PENDING") {
+            if (!currentOrder || !currentOrder.orderId) {
                 return {
                     success: false,
-                    message: `Order cannot be modified. Status: ${currentOrder.orderStatus}`
+                    error: {
+                        code: "ORDER_NOT_FOUND",
+                        message: "Order not found or invalid at broker",
+                        recoverable: false
+                    }
                 };
             }
 
-            // 2️⃣ FULL payload (Dhan mandatory)
+            if (!["PENDING", "TRANSIT"].includes(currentOrder.orderStatus)) {
+                return {
+                    success: false,
+                    error: {
+                        code: "ORDER_NOT_MODIFIABLE",
+                        message: `Cannot modify order in ${currentOrder.orderStatus} state`,
+                        brokerStatus: currentOrder.orderStatus,
+                        recoverable: false
+                    }
+                };
+            }
+
+            // 2. Build minimal payload — only include changed fields + required
             const body = {
-                dhanClientId,                         // ✅ sandbox OR production
-                orderId: currentOrder.orderId,        // ✅ mandatory
-                orderType: currentOrder.orderType,    // ✅ mandatory
-                validity: currentOrder.validity,      // ✅ mandatory
-                quantity: Number(quantity || currentOrder.quantity),
+                dhanClientId,
+                orderId: currentOrder.orderId
             };
 
-            // LIMIT → price required
-            if (currentOrder.orderType === "LIMIT") {
-                body.price = Number(price || currentOrder.price);
+            // Only send if different
+            if (orderType && orderType !== currentOrder.orderType) {
+                body.orderType = orderType;
             }
-
-            // SL / SL-M → triggerPrice required
-            if (currentOrder.triggerPrice > 0) {
-                body.triggerPrice = Number(
-                    triggerPrice || currentOrder.triggerPrice
-                );
+            if (validity && validity !== currentOrder.validity) {
+                body.validity = validity;
             }
-
-            // Optional
+            if (quantity !== undefined && Number(quantity) !== currentOrder.quantity) {
+                body.quantity = Number(quantity); // Must be TOTAL quantity
+            }
+            if (price !== undefined && ["LIMIT", "STOP_LOSS"].includes(orderType || currentOrder.orderType)) {
+                body.price = Number(price);
+            }
+            if (triggerPrice !== undefined && ["STOP_LOSS", "STOP_LOSS_MARKET"].includes(orderType || currentOrder.orderType)) {
+                body.triggerPrice = Number(triggerPrice);
+                if (body.triggerPrice <= 0) {
+                    return {
+                        success: false,
+                        error: {
+                            code: "INVALID_TRIGGER_PRICE",
+                            message: "Trigger price must be greater than 0",
+                            recoverable: false
+                        }
+                    };
+                }
+            }
             if (legName && legName !== "NA") {
                 body.legName = legName;
             }
 
-            console.log("Final modify body:", body);
+            // If no meaningful changes, return success (no API call needed)
+            if (Object.keys(body).length === 2) {
+                return {
+                    success: true,
+                    message: "No changes detected",
+                    data: currentOrder
+                };
+            }
 
-            // 3️⃣ Modify order
+            // 3. Modify the order
             const modifyRes = await axios.put(
                 `${dhan.baseUrl}/v2/orders/${orderId}`,
                 body,
@@ -1289,34 +1371,179 @@ module.exports = async function (BrokerConnection) {
                     timeout: 15000
                 }
             );
-            console.log('modifyRes:', modifyRes.data);
+
+            const result = modifyRes.data;
+
+            if (result.orderStatus === "TRANSIT") {
+                return {
+                    success: true,
+                    warning: {
+                        code: "ORDER_IN_TRANSIT",
+                        message: "Modification accepted. Awaiting exchange confirmation.",
+                        nextAction: "POLL_ORDER_STATUS"
+                    },
+                    data: result
+                };
+            }
+
             return {
                 success: true,
-                data: modifyRes.data
+                data: result
             };
 
         } catch (err) {
-            console.error(
-                "Modify order error:",
-                err.response?.data || err.message
-            );
-
+            const brokerErr = err.response?.data;
             return {
                 success: false,
-                message:
-                    err.response?.data?.errorMessage ||
-                    err.message ||
-                    "Failed to modify order"
+                error: {
+                    code: brokerErr?.errorCode || "BROKER_ERROR",
+                    message: brokerErr?.errorMessage || err.message || "Failed to modify order",
+                    brokerMessage: brokerErr || null,
+                    recoverable: true
+                }
             };
         }
     };
 
     BrokerConnection.remoteMethod("modifyPendingOrder", {
         accepts: [
-            { arg: "data", type: "object", http: { source: "body" }, required: true }, // ← This gets the JSON payload
-            { arg: "req", type: "object", http: { source: "req" } } // ← Optional: still get full req for accessToken
+            { arg: "data", type: "object", http: { source: "body" }, required: true },
+            { arg: "req", type: "object", http: { source: "req" } }
         ],
         returns: { root: true },
-        http: { path: "/modifypendingorder", verb: "put" },
+        http: { path: "/modifypendingorder", verb: "put" }
     });
+
+    BrokerConnection.getLivePrice = async function (payload, req) {
+        console.log('[getLivePrice] Request received. Payload:', JSON.stringify(payload));
+        console.log('[getLivePrice] req.accessToken.userId:', req.accessToken?.userId);
+
+        const userId = req.accessToken?.userId;
+        if (!userId) {
+            console.error('[getLivePrice] AUTH_ERROR: No userId');
+            return {
+                success: false,
+                error: { code: "AUTH_ERROR", message: "User not authenticated", recoverable: false }
+            };
+        }
+
+        // Extract securityId & segment
+        let securityId = null;
+        let exchangeSegment = null;
+
+        if (typeof payload === 'object' && payload !== null) {
+            for (const segment in payload) {
+                if (Object.prototype.hasOwnProperty.call(payload, segment) &&
+                    Array.isArray(payload[segment]) && payload[segment].length > 0) {
+                    exchangeSegment = segment;
+                    securityId = payload[segment][0];
+                    break;
+                }
+            }
+        }
+
+        console.log('[getLivePrice] Extracted → securityId:', securityId, 'exchangeSegment:', exchangeSegment);
+
+        if (!securityId || !exchangeSegment) {
+            console.error('[getLivePrice] VALIDATION_ERROR: Bad payload');
+            return {
+                success: false,
+                error: {
+                    code: "VALIDATION_ERROR",
+                    message: "Invalid payload: must contain exchangeSegment with at least one securityId",
+                    example: '{ "NSE_EQ": ["11536"] }',
+                    recoverable: false
+                }
+            };
+        }
+
+        try {
+            const dhan = getDhanConfig();
+            const record = dhan.isSandbox ? null : await getDhanRecord(userId);
+            const accessToken = dhan.isSandbox ? dhan.accessToken : record.accessToken;
+            const dhanClientId = dhan.isSandbox ? dhan.clientId : record.clientId;
+
+            console.log('[getLivePrice] Using accessToken (first 20 chars):', accessToken?.substring(0, 20));
+            console.log('[getLivePrice] dhanClientId:', dhanClientId);
+            console.log('[getLivePrice] Sandbox mode:', dhan.isSandbox);
+
+            const marketFeedPayload = {
+                [securityId]: true   // Key: securityId as string, value: true
+            };
+            console.log('[getLivePrice] Corrected payload →', JSON.stringify(marketFeedPayload));
+
+            const response = await axios.post(
+                `${dhan.baseUrl}/v2/marketfeed/ltp`,
+                marketFeedPayload,
+                {
+                    headers: {
+                        "access-token": accessToken,
+                        "client-id": dhanClientId,
+                        "Accept": "application/json",
+                        "Content-Type": "application/json"
+                    },
+                    timeout: 15000
+                }
+            );
+
+            console.log('[getLivePrice] Dhan response status:', response.status);
+            console.log('[getLivePrice] Dhan full response:', JSON.stringify(response.data));
+
+            const ltpData = response.data?.data?.[securityId]?.last_price;
+
+            if (ltpData === undefined || ltpData === null) {
+                console.warn('[getLivePrice] NO_LTP_DATA – Broker returned no price');
+                return {
+                    success: false,
+                    error: {
+                        code: "NO_LTP_DATA",
+                        message: "No LTP returned from broker",
+                        brokerResponse: response.data,
+                        recoverable: true
+                    }
+                };
+            }
+
+            console.log('[getLivePrice] SUCCESS → LTP:', ltpData);
+            return {
+                success: true,
+                data: {
+                    ltp: Number(ltpData),
+                    timestamp: Date.now()
+                }
+            };
+
+        } catch (err) {
+            console.error('[getLivePrice] EXCEPTION:', err.message);
+            if (err.response) {
+                console.error('[getLivePrice] Broker error response:', JSON.stringify(err.response.data));
+                console.error('[getLivePrice] Status:', err.response.status);
+            } else if (err.request) {
+                console.error('[getLivePrice] No response received (network/Dhan down?)');
+            }
+
+            const brokerErr = err.response?.data;
+            return {
+                success: false,
+                error: {
+                    code: brokerErr?.errorCode || "BROKER_ERROR",
+                    message: brokerErr?.errorMessage || err.message || "Failed to fetch live price",
+                    brokerMessage: brokerErr || null,
+                    recoverable: true
+                }
+            };
+        }
+    };
+
+    // Remote method definition (POST with body)
+    BrokerConnection.remoteMethod("getLivePrice", {
+        accepts: [
+            { arg: "payload", type: "object", http: { source: "body" }, required: true },
+            { arg: "req", type: "object", http: { source: "req" } }
+        ],
+        returns: { root: true },
+        http: { path: "/live-price", verb: "post" }
+    });
+
+
 };

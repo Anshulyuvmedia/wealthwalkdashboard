@@ -438,23 +438,23 @@ module.exports = function (TdUser) {
 
     /*** Logout ***/
     TdUser.logout = async function (req) {
-        const tokenId = req.headers.authorization?.replace('Bearer ', '');
-        if (!tokenId) {
-            const error = new Error('No token provided');
-            error.statusCode = 401;
-            throw error;
+        const authHeader = req.headers.authorization;
+
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return { success: true, message: 'No session to log out' };
         }
 
+        const tokenId = authHeader.substring(7); // "Bearer ".length = 7
         const AccessToken = loopback.getModel('AccessToken');
-        const token = await AccessToken.findOne({ where: { id: tokenId } });
-        if (!token) {
-            const error = new Error('Invalid token');
-            error.statusCode = 401;
-            throw error;
-        }
 
-        await AccessToken.destroyById(tokenId);
-        return { success: true, message: 'Logged out successfully' };
+        const token = await AccessToken.findById(tokenId);
+        if (token) {
+            await token.destroy();
+            return { success: true, message: 'Logged out successfully' };
+        } else {
+            // Token already gone → treat as success
+            return { success: true, message: 'Session already cleared or expired' };
+        }
     };
 
     TdUser.remoteMethod('logout', {

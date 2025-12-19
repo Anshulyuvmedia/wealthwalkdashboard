@@ -1,0 +1,79 @@
+{
+    "name": "DhanInstrument",
+    "base": "PersistedModel",
+    "plural": "dhaninstruments",
+    "idInjection": true,
+    "options": {
+        "mongodb": {
+            "collection": "dhaninstruments"
+        }
+    },
+    "properties": {
+        "securityId": {
+            "type": "string",
+            "index": true
+        },
+        "exchangeSegment": {
+            "type": "string",
+            "index": true
+        },
+        "symbol": {
+            "type": "string",
+            "index": true
+        },
+        "displayName": {
+            "type": "string",
+            "index": true
+        },
+        "instrumentType": {
+            "type": "string",
+            "index": true
+        },
+        "isin": {
+            "type": "string"
+        },
+        "lotSize": {
+            "type": "number",
+            "default": 1
+        },
+        "tickSize": {
+            "type": "number",
+            "default": 0.05
+        },
+        "underlyingSymbol": {
+            "type": "string"
+        },
+        "expiryDate": {
+            "type": "date"
+        },
+        "strikePrice": {
+            "type": "number"
+        },
+        "optionType": {
+            "type": "string"
+        },
+        "exchId": {
+            "type": "string",
+            "index": true
+        },
+        "series": {
+            "type": "string",
+            "index": true
+        },
+        "expiryFlag": {
+            "type": "string",
+            "index": true
+        },
+        "asmGsmFlag": {
+            "type": "string",
+            "index": true
+        },
+        "asmGsmCategory": {
+            "type": "string"
+        },
+        "mtfLeverage": {
+            "type": "number"
+        }
+    },
+    "strict": true
+}

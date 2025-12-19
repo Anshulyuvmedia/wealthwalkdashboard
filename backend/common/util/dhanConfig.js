@@ -16,7 +16,7 @@ const getDhanConfig = () => {
 
         clientId: isSandbox
             ? process.env.DHAN_SANDBOX_CLIENT_ID
-            : process.env.DHAN_CLIENT_ID,
+            : null, // or fetch from user record
 
         // Sandbox: static token from .env
         // Production: dynamically fetched/stored per user (from DB)
