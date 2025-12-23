@@ -3,105 +3,146 @@ const NewsAPI = require('newsapi');
 const _ = require("lodash");
 
 module.exports = function (TdNews) {
+
+    const PAGE_SIZE = 20;
+    const MAX_FREE_RESULTS = 100;
+    const MAX_PAGE = Math.ceil(MAX_FREE_RESULTS / PAGE_SIZE); // 5
+
     TdNews.getNewsData = async function (category, keywords, page = 1) {
-        const newsapi = new NewsAPI(process.env.NEWS_API_KEY || '6f26414237514a82a1bf32f0ebeda3d6');
+
+        // 🚫 STOP looping beyond free plan limit
+        if (page > MAX_PAGE) {
+            return {
+                dataList: {
+                    status: "1",
+                    message: "No more results available (free plan limit)",
+                    Item: [],
+                    totalResults: MAX_FREE_RESULTS,
+                    hasMore: false
+                }
+            };
+        }
+
+        const newsapi = new NewsAPI(process.env.NEWS_API_KEY);
 
         const validCategories = ['business', 'technology'];
-        const queryParams = {
-            page,
-            language: 'en',
-            country: 'us',
-            pageSize: 20,
-        };
 
-        if (category && validCategories.includes(category)) {
-            queryParams.category = category;
-        }
+        // 🔹 Last 7 days
+        const fromDate = new Date();
+        fromDate.setDate(fromDate.getDate() - 7);
+        const fromISO = fromDate.toISOString();
 
-        if (keywords) {
-            queryParams.q = keywords.replace(/\+/g, ' ');
-        } else if (!category) {
-            queryParams.q = 'business';
-        }
+        // 🔹 Simple, free-plan-safe query
+        const baseQuery = keywords
+            ? `${keywords.replace(/\+/g, ' ')} india`
+            : 'stock market india';
 
         try {
-            let response = await newsapi.v2.topHeadlines(queryParams);
-            console.log('top-headlines response:', JSON.stringify(response, null, 2));
+            let response;
 
+            // ==========================
+            // 1️⃣ TOP HEADLINES (INDIA)
+            // ==========================
+            response = await newsapi.v2.topHeadlines({
+                country: 'in',
+                category: validCategories.includes(category) ? category : undefined,
+                language: 'en',
+                page,
+                pageSize: PAGE_SIZE
+            });
+
+            // ==========================
+            // 2️⃣ FALLBACK → EVERYTHING
+            // ==========================
             if (response.status !== 'ok' || _.isEmpty(response.articles)) {
-                console.log('No articles from top-headlines, trying everything endpoint');
                 response = await newsapi.v2.everything({
-                    q: queryParams.q || 'business',
+                    q: baseQuery,
                     language: 'en',
+                    from: fromISO,
+                    sortBy: 'publishedAt',
                     page,
-                    sortBy: 'relevancy',
-                    pageSize: 20,
+                    pageSize: PAGE_SIZE
                 });
-                console.log('everything response:', JSON.stringify(response, null, 2));
             }
 
+            // ==========================
+            // 3️⃣ EMPTY RESPONSE
+            // ==========================
             if (response.status !== 'ok' || _.isEmpty(response.articles)) {
                 return {
                     dataList: {
                         status: "0",
-                        message: "No articles found for the given query",
+                        message: "No news found",
                         Item: [],
                         totalResults: response.totalResults || 0,
-                    },
+                        hasMore: false
+                    }
                 };
             }
 
-            const formattedArticles = response.articles.map((article, index) => {
-                const image = typeof article.urlToImage === 'string' && article.urlToImage.startsWith('http')
-                    ? article.urlToImage
-                    : null;
-                const url = typeof article.url === 'string' && article.url.startsWith('http')
-                    ? article.url
-                    : '#';
-                const content = article.content
-                    ? article.content.replace(/\[\+\d+ chars\]/, '').trim()
-                    : 'No content available';
-                return {
+            // ==========================
+            // 4️⃣ FORMAT DATA
+            // ==========================
+            const formattedArticles = response.articles
+                .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
+                .map((article, index) => ({
                     id: `${page}-${index}`,
-                    category: category || 'All',
                     title: article.title || 'No title',
                     source: article.source?.name || 'Unknown',
-                    timestamp: article.publishedAt || new Date().toISOString(),
-                    image,
+                    timestamp: article.publishedAt,
+                    image: article.urlToImage?.startsWith('http') ? article.urlToImage : null,
                     description: article.description || 'No description',
-                    content,
-                    url,
-                };
-            });
+                    content: article.content
+                        ? article.content.replace(/\[\+\d+ chars\]/, '').trim()
+                        : 'No content available',
+                    url: article.url?.startsWith('http') ? article.url : '#'
+                }));
 
             return {
                 dataList: {
                     status: "1",
                     message: "success",
                     Item: formattedArticles,
-                    totalResults: response.totalResults || 0,
-                },
+                    totalResults: Math.min(response.totalResults || 0, MAX_FREE_RESULTS),
+                    hasMore: page < MAX_PAGE
+                }
             };
+
         } catch (error) {
             console.error('NewsAPI error:', error.message);
+
+            // 🚫 Explicitly stop pagination on limit error
+            if (error.message.includes('requested too many results')) {
+                return {
+                    dataList: {
+                        status: "1",
+                        message: "Reached free plan limit",
+                        Item: [],
+                        totalResults: MAX_FREE_RESULTS,
+                        hasMore: false
+                    }
+                };
+            }
+
             return {
                 dataList: {
                     status: "0",
-                    message: `Failed to fetch news: ${error.message}`,
+                    message: error.message,
                     Item: [],
                     totalResults: 0,
-                },
+                    hasMore: false
+                }
             };
         }
     };
 
     TdNews.remoteMethod('getNewsData', {
         accepts: [
-            { arg: 'category', type: 'string', description: 'Category like business or technology' },
-            { arg: 'keywords', type: 'string', description: 'Search terms like "stock market crypto"' },
-            { arg: 'page', type: 'number', description: 'Page number for pagination' },
+            { arg: 'category', type: 'string' },
+            { arg: 'keywords', type: 'string' },
+            { arg: 'page', type: 'number' }
         ],
         returns: { arg: 'dataList', type: 'object', root: true },
-        http: { path: '/getNewsData', verb: 'get' },
+        http: { path: '/getNewsData', verb: 'get' }
     });
 };

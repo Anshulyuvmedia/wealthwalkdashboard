@@ -4,7 +4,7 @@ const cache = require("../util/cache");
 const { getDhanConfig } = require('../util/dhanConfig');
 
 module.exports = async function (BrokerConnection) {
-    // Wait until the model is fully mounted to the LoopBack app
+
     const app = await new Promise(resolve => {
         if (BrokerConnection.app) {
             resolve(BrokerConnection.app);
@@ -23,7 +23,6 @@ module.exports = async function (BrokerConnection) {
         return record;
     };
 
-    // 1. Save Credentials
     BrokerConnection.saveCredentials = async function (req, data) {
         const userId = req.accessToken.userId;
         const { clientId, apiKey, apiSecret } = data;
@@ -55,7 +54,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/save-credentials", verb: "post" },
     });
 
-    // 2. Start Login
     BrokerConnection.startLogin = async function (req) {
         const userId = req.accessToken.userId;
         const record = await getDhanRecord(userId);
@@ -101,7 +99,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/start-login", verb: "get" },
     });
 
-    // 3. Handle Callback – FIXED (Broker token ≠ App token)
     BrokerConnection.callback = async function (tokenId, ctx) {
 
         console.log("Callback URL hit:", ctx.req.originalUrl);
@@ -213,7 +210,6 @@ module.exports = async function (BrokerConnection) {
         }
     };
 
-
     BrokerConnection.remoteMethod("callback", {
         accepts: [
             { arg: "tokenId", type: "string", source: "query", required: true },
@@ -222,9 +218,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/callback", verb: "get" },
     });
 
-    // ──────────────────────────────────────
-    // DISCONNECT BROKER (Clear credentials & tokens)
-    // ──────────────────────────────────────
     BrokerConnection.disconnect = async function (req) {
         const userId = req.accessToken.userId;
         if (!userId) throw new Error('Unauthorized');
@@ -263,7 +256,7 @@ module.exports = async function (BrokerConnection) {
         http: { path: '/disconnect', verb: 'post' },
         description: 'Disconnect and clear saved Dhan credentials and access token'
     });
-    // Profile
+
     BrokerConnection.getProfile = async function (req) {
         const record = await getDhanRecord(req.accessToken.userId);
         if (!record.accessToken) throw new Error("No Dhan access token");
@@ -275,7 +268,7 @@ module.exports = async function (BrokerConnection) {
             },
             timeout: 10000
         });
-        console.log('profile', res.data);
+        // console.log('profile', res.data);
         return res.data;
     };
 
@@ -285,7 +278,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/profile", verb: "get" },
     });
 
-    // Holdings
     BrokerConnection.getHoldings = async function (req) {
         const userId = req.accessToken.userId;
         const cacheKey = `holdings:${userId}`;
@@ -309,7 +301,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/holdings", verb: "get" },
     });
 
-    // Positions
     BrokerConnection.getPositions = async function (req) {
         const userId = req.accessToken.userId;
         const cacheKey = `positions:${userId}`;
@@ -328,14 +319,12 @@ module.exports = async function (BrokerConnection) {
         return res.data;
     };
 
-
     BrokerConnection.remoteMethod("getPositions", {
         accepts: [{ arg: "req", type: "object", http: { source: "req" } }],
         returns: { root: true },
         http: { path: "/positions", verb: "get" },
     });
 
-    // Convert Position
     BrokerConnection.convertPosition = async function (req, data) {
         const record = await getDhanRecord(req.accessToken.userId);
         const res = await axios.post("https://api.dhan.co/v2/positions/convert", {
@@ -358,7 +347,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/positions/convert", verb: "post" },
     });
 
-    // Merged Portfolio
     BrokerConnection.getPortfolio = async function (req) {
         const record = await getDhanRecord(req.accessToken.userId);
 
@@ -408,7 +396,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/portfolio", verb: "get" },
     });
 
-    // FUNDS - NEW
     BrokerConnection.getFunds = async function (req) {
         const userId = req.accessToken.userId;
         const cacheKey = `funds:${userId}`;
@@ -439,7 +426,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/funds", verb: "get" },
     });
 
-    // Margin Calculator - NEW
     BrokerConnection.calculateMargin = async function (req, data) {
         const record = await getDhanRecord(req.accessToken.userId);
         const payload = {
@@ -526,9 +512,6 @@ module.exports = async function (BrokerConnection) {
         description: "Fetch real-time LTP, daily change, and % change for multiple symbols"
     });
 
-    // ─────────────────────────────────────────────────────────────────────
-    // BONUS: Optional — One-liner to get LTP for all holdings + positions
-    // ─────────────────────────────────────────────────────────────────────
     BrokerConnection.getAllLiveQuotes = async function (req) {
         const record = await getDhanRecord(req.accessToken.userId);
 
@@ -556,7 +539,6 @@ module.exports = async function (BrokerConnection) {
         description: "Convenient endpoint: returns live quotes for all your holdings + positions"
     });
 
-    // Improved cache-wrapper (non-breaking, additive only)
     async function getCachedLTP(record, securityId) {
         const cacheKey = `ltp:${securityId}`;
 
@@ -637,9 +619,6 @@ module.exports = async function (BrokerConnection) {
         description: "Fetch live LTP for a single securityId with caching"
     });
 
-    // ──────────────────────────────────────
-    // PORTFOLIO SUMMARY – FINAL & ACCURATE (Dec 2025)
-    // ──────────────────────────────────────
     BrokerConnection.getPortfolioSummary = async function (req) {
         const userId = req.accessToken.userId;
         const record = await getDhanRecord(userId);
@@ -714,10 +693,7 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/portfolio-summary", verb: "get" }
     });
 
-    // ──────────────────────────────────────────────────────────────
-    // Dhan Live MarketFeed WebSocket Proxy (Secure + Scalable)
-    // ──────────────────────────────────────────────────────────────
-    let activeSockets = new Map(); // userId → socket instance
+    let activeSockets = new Map();
 
     BrokerConnection.startLiveFeed = async function (req) {
         const userId = req.accessToken.userId;
@@ -792,9 +768,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/start-live-feed", verb: "post" }
     });
 
-    // ──────────────────────────────────────
-    // ORDER HISTORY – 100% WORKING (Dec 2025)
-    // ──────────────────────────────────────
     BrokerConnection.orderHistory = async function (req) {
         const userId = req.accessToken.userId;
         const symbol = req.query.symbol?.trim();
@@ -856,9 +829,6 @@ module.exports = async function (BrokerConnection) {
         description: "Fetch executed trade history for a symbol"
     });
 
-    // ──────────────────────────────────────
-    // DAILY P&L – TODAY'S PROFIT/LOSS (Dec 2025)
-    // ──────────────────────────────────────
     BrokerConnection.getTodayPnL = async function (req) {
         const userId = req.accessToken.userId;
         const record = await getDhanRecord(userId);
@@ -927,7 +897,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/today-pnl", verb: "get" }
     });
 
-    // Trade History (from Dhan API v2/trades)
     BrokerConnection.getTradeHistory = async function (req, data = {}) {
         const userId = req.accessToken.userId;
         const record = await getDhanRecord(userId);
@@ -964,7 +933,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/trade-history", verb: "get" },
     });
 
-    // Ledger (from Dhan API v2/ledger)
     BrokerConnection.getLedger = async function (req, data = {}) {
         const userId = req.accessToken.userId;
         const record = await getDhanRecord(userId);
@@ -996,7 +964,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/ledger", verb: "get" },
     });
 
-    // Export TradeBook CSV (merged trades + ledger)
     BrokerConnection.exportTradeBook = async function (req, data = {}) {
         const userId = req.accessToken.userId;
         const record = await getDhanRecord(userId);
@@ -1040,9 +1007,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/export-tradebook", verb: "get" },
     });
 
-    // ──────────────────────────────────────
-    // COMBINED TRADEBOOK → ONLY REAL TRADES (no ledger/funds)
-    // ──────────────────────────────────────
     BrokerConnection.getTradeBook = async function (req) {
         const from = req.query.from || '2024-01-01';
         const to = req.query.to || new Date().toISOString().split('T')[0];
@@ -1091,9 +1055,6 @@ module.exports = async function (BrokerConnection) {
         http: { path: "/tradebook", verb: "get" }
     });
 
-    // ──────────────────────────────────────
-    // ORDER HISTORY BY SECURITY ID – Using /v2/trades (Executed Only)
-    // ──────────────────────────────────────
     BrokerConnection.orderHistoryBySecurity = async function (req) {
         const securityId = req.query.securityId?.trim();
         let fy = req.query.fy?.trim() || null;
@@ -1535,7 +1496,6 @@ module.exports = async function (BrokerConnection) {
         }
     };
 
-    // Remote method definition (POST with body)
     BrokerConnection.remoteMethod("getLivePrice", {
         accepts: [
             { arg: "payload", type: "object", http: { source: "body" }, required: true },
